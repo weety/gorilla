@@ -3,7 +3,7 @@ import os
 # toolchains options
 ARCH='arm'
 CPU='cortex-m4'
-CROSS_TOOL='keil'
+CROSS_TOOL='gcc'
 
 if os.getenv('RTT_CC'):
     CROSS_TOOL = os.getenv('RTT_CC')
@@ -12,7 +12,7 @@ if os.getenv('RTT_CC'):
 # EXEC_PATH is the compiler execute path, for example, CodeSourcery, Keil MDK, IAR
 if  CROSS_TOOL == 'gcc':
     PLATFORM 	= 'gcc'
-    EXEC_PATH 	= r'E:/Program Files/CodeSourcery/Sourcery G++ Lite/bin'
+    EXEC_PATH 	= r'D:/gcc-arm-none-eabi-5_4-2016q3-20160926-win32/bin'
 elif CROSS_TOOL == 'keil':
     PLATFORM 	= 'armcc'
     EXEC_PATH 	= r'C:/Keil'
@@ -41,7 +41,8 @@ if PLATFORM == 'gcc':
     OBJCPY = PREFIX + 'objcopy'
 
     DEVICE = '  -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -ffunction-sections -fdata-sections'
-    CFLAGS = DEVICE + ' -g -Wall -DSTM32F407ZG -DSTM32F4XX -DUSE_STDPERIPH_DRIVER -D__ASSEMBLY__ -D__FPU_USED'
+    CFLAGS = DEVICE + ' -g -Wall -DSTM32F407VG -DSTM32F4XX -DUSE_STDPERIPH_DRIVER -D__ASSEMBLY__ -D__FPU_USED'
+    CFLAGS += ' -std=c99'
     AFLAGS = ' -c' + DEVICE + ' -x assembler-with-cpp -Wa,-mimplicit-it=thumb '
     LFLAGS = DEVICE + ' -lm -lgcc -lc' + ' -nostartfiles -Wl,--gc-sections,-Map=rtthread-stm32.map,-cref,-u,Reset_Handler -T stm32_rom.ld'
 
@@ -54,7 +55,8 @@ if PLATFORM == 'gcc':
     else:
         CFLAGS += ' -O2'
 
-    POST_ACTION = OBJCPY + ' -O binary $TARGET rtthread.bin\n' + SIZE + ' $TARGET \n'
+    POST_ACTION = OBJCPY + ' -O binary $TARGET gorilla.bin\n' + SIZE + ' $TARGET \n'
+    POST_ACTION += 'python px_mkfw.py --prototype px4-stm32f4discovery.prototype --git_identity ../.. --image gorilla.bin \n'
 
 elif PLATFORM == 'armcc':
     # toolchains
@@ -80,7 +82,7 @@ elif PLATFORM == 'armcc':
     else:
         CFLAGS += ' -O2'
 
-    POST_ACTION = 'fromelf --bin $TARGET --output rtthread.bin \nfromelf -z $TARGET'
+    POST_ACTION = 'fromelf --bin $TARGET --output gorilla.bin \nfromelf -z $TARGET'
 
 elif PLATFORM == 'iar':
     # toolchains

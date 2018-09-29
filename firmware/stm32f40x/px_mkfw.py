@@ -127,7 +127,7 @@ if args.image != None:
 	desc['image'] = base64.b64encode(zlib.compress(bytes,9)).decode('utf-8')
 
 #print(json.dumps(desc, indent=4))
-fwf = open('rtthread.px4', "wb")
+fwf = open('gorilla.px4', "wb")
 fwf.write(json.dumps(desc, indent=4))
 fwf.close()
 
