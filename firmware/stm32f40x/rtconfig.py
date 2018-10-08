@@ -32,6 +32,7 @@ if PLATFORM == 'gcc':
     # toolchains
     PREFIX = 'arm-none-eabi-'
     CC = PREFIX + 'gcc'
+    CXX = PREFIX + 'g++'
     AS = PREFIX + 'gcc'
     AR = PREFIX + 'ar'
     LINK = PREFIX + 'gcc'
@@ -43,6 +44,7 @@ if PLATFORM == 'gcc':
     DEVICE = '  -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -ffunction-sections -fdata-sections'
     CFLAGS = DEVICE + ' -g -Wall -DSTM32F407ZG -DSTM32F4XX -DUSE_STDPERIPH_DRIVER -D__ASSEMBLY__ -D__FPU_USED'
     CFLAGS += ' -std=c99'
+    CXXFLAGS = DEVICE + ' -g -Wall -DSTM32F407ZG -DSTM32F4XX -DUSE_STDPERIPH_DRIVER -D__ASSEMBLY__ -D__FPU_USED'
     AFLAGS = ' -c' + DEVICE + ' -x assembler-with-cpp -Wa,-mimplicit-it=thumb '
     LFLAGS = DEVICE + ' -lm -lgcc -lc' + ' -nostartfiles -Wl,--gc-sections,-Map=rtthread-stm32.map,-cref,-u,Reset_Handler -T stm32_rom.ld'
 
@@ -51,9 +53,11 @@ if PLATFORM == 'gcc':
 
     if BUILD == 'debug':
         CFLAGS += ' -O0 -gdwarf-2'
+        CXXFLAGS += ' -O2 -gdwarf-2'
         AFLAGS += ' -gdwarf-2'
     else:
         CFLAGS += ' -O2'
+        CXXFLAGS += ' -O2'
 
     POST_ACTION = OBJCPY + ' -O binary $TARGET gorilla.bin\n' + SIZE + ' $TARGET \n'
     POST_ACTION += 'python px_mkfw.py --prototype px4-stm32f4discovery.prototype --git_identity ../.. --image gorilla.bin \n'
