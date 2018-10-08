@@ -83,6 +83,43 @@ void SysTick_Handler(void)
     rt_interrupt_leave();
 }
 
+uint64_t time_get_us(void)
+{
+    rt_tick_t tick;
+    uint64_t value;
+
+#define RT_TICK_US	(1000000/RT_TICK_PER_SECOND)
+
+    tick = rt_tick_get();
+    value = tick * (uint64_t)RT_TICK_US + (SysTick->LOAD - SysTick->VAL) * (uint64_t)RT_TICK_US / SysTick->LOAD;
+
+    return value;
+}
+
+uint32_t time_get_ms(void)
+{
+    rt_tick_t tick;
+    uint32_t value;
+
+#define RT_TICK_MS (1000/RT_TICK_PER_SECOND)
+
+    tick = rt_tick_get();
+    value = tick * RT_TICK_MS + (SysTick->LOAD - SysTick->VAL) * RT_TICK_MS / SysTick->LOAD;
+
+    return value;
+}
+
+void time_delay_us(uint32_t delay)
+{
+    uint64_t target = time_get_us() + delay;
+    while(time_get_us() < target);
+}
+
+void time_delay_ms(uint32_t delay)
+{
+    time_delay_us(delay * 1000);
+}
+
 /**
  * This function will initial STM32 board.
  */

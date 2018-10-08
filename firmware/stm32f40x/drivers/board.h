@@ -57,6 +57,11 @@ extern int __bss_end;
 #define STM32_SRAM_BEGIN    (&__bss_end)
 #endif
 
+uint64_t time_get_us(void);
+uint32_t time_get_ms(void);
+void time_delay_us(uint32_t delay);
+void time_delay_ms(uint32_t delay);
+
 void rt_hw_board_init(void);
 
 #endif
