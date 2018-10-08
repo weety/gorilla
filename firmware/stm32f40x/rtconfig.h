@@ -129,7 +129,8 @@
 /* RT_USING_CAN is not set */
 /* RT_USING_HWTIMER is not set */
 /* RT_USING_CPUTIME is not set */
-/* RT_USING_I2C is not set */
+#define RT_USING_I2C
+#define RT_USING_I2C_BITOPS
 #define RT_USING_PIN
 /* RT_USING_PWM is not set */
 /* RT_USING_MTD_NOR is not set */
