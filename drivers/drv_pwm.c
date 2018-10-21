@@ -178,12 +178,10 @@ int rt_hw_pwm_init(void)
 	GPIO_InitTypeDef GPIO_InitStructure;
 	TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
 	TIM_OCInitTypeDef  TIM_OCInitStructure;
-	//TIM_OC_InitTypeDef sConfig = {0};
-
 	
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM9, ENABLE);
-	_pwm_device.TIM = TIM3;
-	/* GPIOC and GPIOB clock enable */
+	_pwm_device.TIM = TIM9;
+	/* GPIOA clock enable */
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
 
 	/* GPIOA Configuration: TIM9 CH1 (PA2) and TIM9 CH2 (PA3) */
