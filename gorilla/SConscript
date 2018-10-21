@@ -3,9 +3,11 @@ from building import *
 cwd  = GetCurrentDir()
 src = Split('''
 sensor/sensor.c
+moto/pwm.c
+moto/moto.c
 ''')
 
-CPPPATH = [cwd + '/sensor']
+CPPPATH = [cwd + '/sensor', cwd + '/moto']
 
 group = DefineGroup('Gorilla', src, depend = [''], CPPPATH = CPPPATH)
 

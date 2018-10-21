@@ -3,6 +3,7 @@ from building import *
 cwd  = GetCurrentDir()
 src = Split('''
 mpu6050.c
+drv_pwm.c
 ''')
 
 CPPPATH = [cwd]
