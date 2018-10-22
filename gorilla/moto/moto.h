@@ -31,11 +31,11 @@
 #define RIGHT_MOTO_BIN2_DIR_BACK 0
 
 int moto_init(void);
-int moto_left_run(int dir, int speed);
-int moto_left_set_speed(int speed);
+int moto_left_run(int dir, float speed);
+int moto_left_set_speed(float speed);
 int moto_left_stop(void);
-int moto_right_run(int dir, int speed);
-int moto_right_set_speed(int speed);
+int moto_right_run(int dir, float speed);
+int moto_right_set_speed(float speed);
 int moto_right_stop(void);
 
 #endif // __MOTO_H__

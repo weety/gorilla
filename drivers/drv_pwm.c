@@ -27,6 +27,7 @@
 struct rt_pwm_device {
 	struct rt_device parent;
 	TIM_TypeDef *TIM;
+	uint32_t tim_freq;
 };
 
 static struct rt_pwm_device _pwm_device;
@@ -145,12 +146,12 @@ static rt_err_t  _pwm_control(rt_device_t dev, int cmd, void *args)
 		{
 			param = (struct rt_pwm_param *)args;
 			if ((param->channel < 1) || (param->channel > 4) || 
-				(param->p.freq > ((SystemCoreClock /2) >> 2)))
+				(param->p.freq > (pwm->tim_freq >> 2)))
 			{
 				ret = -RT_EINVAL;
 				break;
 			}
-			pwm->TIM->ARR = (SystemCoreClock /2) / param->p.freq - 1;
+			pwm->TIM->ARR = pwm->tim_freq / param->p.freq - 1;
 			break;
 		}
 		case RT_PWM_CTRL_GET_FREQ:
@@ -161,7 +162,7 @@ static rt_err_t  _pwm_control(rt_device_t dev, int cmd, void *args)
 				ret = -RT_EINVAL;
 				break;
 			}
-			param->p.freq = (SystemCoreClock /2) / (pwm->TIM->ARR + 1);
+			param->p.freq = pwm->tim_freq / (pwm->TIM->ARR + 1);
 			break;
 		}
 		default:
@@ -178,6 +179,10 @@ int rt_hw_pwm_init(void)
 	GPIO_InitTypeDef GPIO_InitStructure;
 	TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
 	TIM_OCInitTypeDef  TIM_OCInitStructure;
+	RCC_ClocksTypeDef  rcc_clocks;
+
+	RCC_GetClocksFreq(&rcc_clocks);
+	_pwm_device.tim_freq = rcc_clocks.PCLK2_Frequency * 2;
 	
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM9, ENABLE);
 	_pwm_device.TIM = TIM9;
@@ -196,7 +201,7 @@ int rt_hw_pwm_init(void)
 	GPIO_PinAFConfig(GPIOA, GPIO_PinSource3, GPIO_AF_TIM9); 
 
 	/* Time base configuration */
-	TIM_TimeBaseStructure.TIM_Period = (SystemCoreClock /2) / RT_PWM_DEFAULT_FREQ - 1;
+	TIM_TimeBaseStructure.TIM_Period = (rcc_clocks.PCLK2_Frequency * 2) / RT_PWM_DEFAULT_FREQ - 1;
 	TIM_TimeBaseStructure.TIM_Prescaler = 0;
 	TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
 	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
@@ -213,15 +218,14 @@ int rt_hw_pwm_init(void)
 	TIM_OC1PreloadConfig(_pwm_device.TIM, TIM_OCPreload_Enable);
 
 	/* PWM1 Mode configuration: Channel2 */
-	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-	TIM_OCInitStructure.TIM_Pulse = 0;
-
 	TIM_OC2Init(_pwm_device.TIM, &TIM_OCInitStructure);
 
 	TIM_OC2PreloadConfig(_pwm_device.TIM, TIM_OCPreload_Enable);
 
 	TIM_ARRPreloadConfig(_pwm_device.TIM, ENABLE);
 
+	TIM_CCxCmd(_pwm_device.TIM, TIM_Channel_1, TIM_CCx_Disable);
+	TIM_CCxCmd(_pwm_device.TIM, TIM_Channel_2, TIM_CCx_Disable);
 	/* TIM9 enable counter */
 	TIM_Cmd(_pwm_device.TIM, ENABLE);
 

@@ -28,7 +28,7 @@ int moto_init(void)
 }
 
 /* dir : 0,front; 1, back */
-int moto_left_run(int dir, int speed)
+int moto_left_run(int dir, float speed)
 {
 	int ret = 0;
 
@@ -40,17 +40,17 @@ int moto_left_run(int dir, int speed)
 		rt_pin_write(LEFT_AIN1_PIN, LEFT_MOTO_AIN1_DIR_BACK);
 	}
 	pwm_enalbe(PWMA_LEFT_MOTO);
-	ret = pwm_set_duty(PWMA_LEFT_MOTO, speed);
+	ret = pwm_set_duty(PWMA_LEFT_MOTO, speed * 100);
 	if (ret)
 		pwm_disalbe(PWMA_LEFT_MOTO);
 
 	return ret;
 }
 
-int moto_left_set_speed(int speed)
+int moto_left_set_speed(float speed)
 {
 	int ret = 0;
-	ret = pwm_set_duty(PWMA_LEFT_MOTO, speed);
+	ret = pwm_set_duty(PWMA_LEFT_MOTO, speed * 100);
 	if (ret)
 		pwm_disalbe(PWMA_LEFT_MOTO);
 	
@@ -64,7 +64,7 @@ int moto_left_stop(void)
 }
 
 /* dir: 0,front; 1,back */
-int moto_right_run(int dir, int speed)
+int moto_right_run(int dir, float speed)
 {
 	int ret = 0;
 
@@ -76,17 +76,17 @@ int moto_right_run(int dir, int speed)
 		rt_pin_write(RIGHT_BIN1_PIN, RIGHT_MOTO_BIN1_DIR_BACK);
 	}
 	pwm_enalbe(PWMB_RIGHT_MOTO);
-	ret = pwm_set_duty(PWMB_RIGHT_MOTO, speed);
+	ret = pwm_set_duty(PWMB_RIGHT_MOTO, speed * 100);
 	if (ret)
 		pwm_disalbe(PWMB_RIGHT_MOTO);
 
 	return ret;
 }
 
-int moto_right_set_speed(int speed)
+int moto_right_set_speed(float speed)
 {
 	int ret = 0;
-	ret = pwm_set_duty(PWMB_RIGHT_MOTO, speed);
+	ret = pwm_set_duty(PWMB_RIGHT_MOTO, speed * 100);
 	if (ret)
 		pwm_disalbe(PWMB_RIGHT_MOTO);
 
@@ -110,14 +110,15 @@ FINSH_FUNCTION_EXPORT_ALIAS(cmd_moto_init, __cmd_moto_init, moto init);
 
 int cmd_moto_left_run(int argc, char **argv)
 {
-	int dir, speed;
+	int dir;
+	float speed;
 
 	if (argc != 3)
 	{
 		rt_kprintf("arg error\n");
 	}
 	dir = strtoul(argv[1], RT_NULL, RT_NULL);
-	speed = strtoul(argv[2], RT_NULL, RT_NULL);
+	speed = strtof(argv[2], RT_NULL);
 	return moto_left_run(dir, speed);
 }
 FINSH_FUNCTION_EXPORT_ALIAS(cmd_moto_left_run, __cmd_moto_left_run, moto left run);
@@ -130,14 +131,15 @@ FINSH_FUNCTION_EXPORT_ALIAS(cmd_moto_left_stop, __cmd_moto_left_stop, moto left 
 
 int cmd_moto_right_run(int argc, char **argv)
 {
-	int dir, speed;
+	int dir;
+	float speed;
 
 	if (argc != 3)
 	{
 		rt_kprintf("arg error\n");
 	}
 	dir = strtoul(argv[1], RT_NULL, RT_NULL);
-	speed = strtoul(argv[2], RT_NULL, RT_NULL);
+	speed = strtof(argv[2], RT_NULL);
 	return moto_right_run(dir, speed);
 }
 FINSH_FUNCTION_EXPORT_ALIAS(cmd_moto_right_run, __cmd_moto_right_run, moto right run);
