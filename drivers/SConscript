@@ -4,6 +4,7 @@ cwd  = GetCurrentDir()
 src = Split('''
 mpu6050.c
 drv_pwm.c
+drv_quardencoder.c
 ''')
 
 CPPPATH = [cwd]
