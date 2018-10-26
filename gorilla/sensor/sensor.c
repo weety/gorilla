@@ -12,9 +12,17 @@
 #include "board.h"
 #include "sensor.h"
 #include "mpu6050.h"
+#include <string.h>
+
+sensor_t sensor_acc = SENSOR_OBJ_INIT(sensor_acc);
+sensor_t sensor_orig_acc = SENSOR_OBJ_INIT(sensor_orig_acc);
+sensor_t sensor_gyr = SENSOR_OBJ_INIT(sensor_gyr);
+sensor_t sensor_orig_gyr = SENSOR_OBJ_INIT(sensor_orig_gyr);
+sensor_t sensor_qenc = SENSOR_OBJ_INIT(sensor_qenc);
 
 static rt_device_t sensor_acc_dev;
 static rt_device_t sensor_gyr_dev;
+static rt_device_t sensor_qenc_dev;
 
 int gorilla_sensor_init(void)
 {
@@ -36,6 +44,21 @@ int gorilla_sensor_init(void)
 	}
 	rt_device_open(sensor_gyr_dev , RT_DEVICE_OFLAG_RDWR);
 
+	sensor_qenc_dev = rt_device_find(SENSOR_QENC_DEVICE);
+	if (!sensor_qenc_dev)
+	{
+		rt_kprintf("Device:%s not found\n", SENSOR_QENC_DEVICE);
+		return -ENODEV;
+	}
+	rt_device_open(sensor_qenc_dev , RT_DEVICE_OFLAG_RDWR);
+
+	sensor_acc.mpdc = mpdc_advertise(sensor_acc.name, sizeof(sensor_acc_t));
+	sensor_orig_acc.mpdc = mpdc_advertise(sensor_orig_acc.name, sizeof(sensor_acc_t));
+	sensor_gyr.mpdc = mpdc_advertise(sensor_gyr.name, sizeof(sensor_gyr_t));
+	sensor_orig_gyr.mpdc = mpdc_advertise(sensor_orig_gyr.name, sizeof(sensor_gyr_t));
+
+	sensor_qenc.mpdc = mpdc_advertise(sensor_qenc.name, sizeof(sensor_qenc_t));
+
 	return 0;
 }
 
@@ -50,10 +73,14 @@ rt_err_t sensor_acc_raw_measure(int16_t acc[3])
 	return r_byte == 6 ? RT_EOK : RT_ERROR;
 }
 
-rt_err_t sensor_acc_measure(float acc[3])
+rt_err_t sensor_acc_measure(sensor_acc_t *acc)
 {
 	rt_size_t r_byte;
-	r_byte = rt_device_read(sensor_acc_dev, ACC_SCALE_POS, (void*)acc, 12);
+	float data[3] = {0.0f, 0.0f, 0.0f};
+	r_byte = rt_device_read(sensor_acc_dev, ACC_SCALE_POS, (void*)data, 12);
+	acc->x = data[0];
+	acc->y = data[1];
+	acc->z = data[2];
 	
 	return r_byte == 12 ? RT_EOK : RT_ERROR;
 }
@@ -66,12 +93,60 @@ rt_err_t sensor_gyr_raw_measure(int16_t gyr[3])
 	return r_size == 6 ? RT_EOK : RT_ERROR;
 }
 
-rt_err_t sensor_gyr_measure(float gyr[3])
+rt_err_t sensor_gyr_measure(sensor_gyr_t *gyr)
 {
 	rt_size_t r_size;
-	r_size = rt_device_read(sensor_gyr_dev, GYR_SCALE_POS, (void*)gyr, 12);
+	float data[3] = {0.0f, 0.0f, 0.0f};
+	r_size = rt_device_read(sensor_gyr_dev, GYR_SCALE_POS, (void*)data, 12);
+	gyr->x = data[0];
+	gyr->y = data[1];
+	gyr->z = data[2];
 	
 	return r_size == 12 ? RT_EOK : RT_ERROR;
+}
+
+rt_err_t sensor_qenc_measure(sensor_qenc_t *qenc)
+{
+	rt_err_t err;
+	struct rt_quardenc_param param;
+	param.channel = 1;
+	err = rt_device_control(sensor_qenc_dev, RT_QUARDENC_CTRL_GET_VAL, &param);
+	if (err) {
+		return err;
+	}
+	qenc->count_l = param.count;
+	qenc->speed_l = (float)param.count / COUNT_PER_CIRCLE / ((float) param.delta_t * 1e-6);
+	qenc->delta_t_l = param.delta_t;
+
+	param.channel = 2;
+	err = rt_device_control(sensor_qenc_dev, RT_QUARDENC_CTRL_GET_VAL, &param);
+	if (!err) {
+		qenc->count_r = param.count;
+		qenc->speed_r = (float)param.count / COUNT_PER_CIRCLE / ((float) param.delta_t * 1e-6);
+		qenc->delta_t_r = param.delta_t;
+	}
+
+	return err;
+}
+
+
+void sensor_measure(void)
+{
+	sensor_acc_t acc;
+	sensor_gyr_t gyr;
+	sensor_qenc_t qenc;
+
+	if (sensor_acc_measure(&acc) == RT_EOK) {
+		mpdc_push_data(sensor_orig_acc.mpdc, &acc);
+	}
+
+	if (sensor_gyr_measure(&gyr) == RT_EOK) {
+		mpdc_push_data(sensor_orig_gyr.mpdc, &gyr);
+	}
+
+	if (sensor_qenc_measure(&qenc) == RT_EOK) {
+		mpdc_push_data(sensor_qenc.mpdc, &qenc);
+	}
 }
 
 int cmd_sensor(int argc, char *argv[])
@@ -128,9 +203,9 @@ int cmd_sensor(int argc, char *argv[])
 						sensor_acc_raw_measure(raw_acc);
 						rt_kprintf("raw acc:%d %d %d\n", raw_acc[0], raw_acc[1], raw_acc[2]);
 					}else if(no_cali){
-						float acc[3];
-						sensor_acc_measure(acc);
-						printf("acc:%f %f %f\n", acc[0], acc[1], acc[2]);
+						sensor_acc_t acc;
+						sensor_acc_measure(&acc);
+						printf("acc:%f %f %f\n", acc.x, acc.y, acc.z);
 					}
 					if(cnt > 1)
 						rt_thread_delay(interval);
@@ -144,9 +219,9 @@ int cmd_sensor(int argc, char *argv[])
 						sensor_gyr_raw_measure(raw_gyr);
 						rt_kprintf("raw gyr:%d %d %d\n", raw_gyr[0], raw_gyr[1], raw_gyr[2]);
 					}else if(no_cali){
-						float gyr[3];
-						sensor_gyr_measure(gyr);
-						printf("gyr:%f %f %f\n", gyr[0], gyr[1], gyr[2]);
+						sensor_gyr_t gyr;
+						sensor_gyr_measure(&gyr);
+						printf("gyr:%f %f %f\n", gyr.x, gyr.y, gyr.z);
 					}
 					if(cnt > 1)
 						rt_thread_delay(interval);
