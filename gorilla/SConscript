@@ -5,9 +5,10 @@ src = Split('''
 sensor/sensor.c
 moto/pwm.c
 moto/moto.c
+mpdc/mpdc.c
 ''')
 
-CPPPATH = [cwd + '/sensor', cwd + '/moto']
+CPPPATH = [cwd + '/sensor', cwd + '/moto', cwd + '/mpdc']
 
 group = DefineGroup('Gorilla', src, depend = [''], CPPPATH = CPPPATH)
 
