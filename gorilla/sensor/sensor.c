@@ -13,6 +13,7 @@
 #include "sensor.h"
 #include "mpu6050.h"
 #include <string.h>
+#include <stdio.h>
 
 sensor_t sensor_acc = SENSOR_OBJ_INIT(sensor_acc);
 sensor_t sensor_orig_acc = SENSOR_OBJ_INIT(sensor_orig_acc);
@@ -58,6 +59,9 @@ int gorilla_sensor_init(void)
 	sensor_orig_gyr.mpdc = mpdc_advertise(sensor_orig_gyr.name, sizeof(sensor_gyr_t));
 
 	sensor_qenc.mpdc = mpdc_advertise(sensor_qenc.name, sizeof(sensor_qenc_t));
+
+	mpdc_subscribe(sensor_acc.name, sizeof(sensor_acc_t));
+	mpdc_subscribe(sensor_gyr.name, sizeof(sensor_gyr_t));
 
 	return 0;
 }
@@ -158,37 +162,36 @@ int cmd_sensor(int argc, char *argv[])
 	uint8_t no_cali = 0;
 
 	if(argc > 1){
-		if(strcmp(argv[1], "acc") == 0){
+		if(strcmp(argv[1], "acc") == 0) {
 			sensor_type = 1;
-		}
-		else if(strcmp(argv[1], "gyr") == 0){
+		} else if(strcmp(argv[1], "gyr") == 0) {
 			sensor_type = 2;
-		}else{
+		} else {
 			rt_kprintf("unknow parameter:%s\n", argv[1]);
 			return 1;
 		}
 		
-		for(uint16_t i = 2 ; i < argc ; i++){
-			if(strcmp(argv[i], "-t") == 0){
+		for(uint16_t i = 2 ; i < argc ; i++) {
+			if(strcmp(argv[i], "-t") == 0) {
 				i++;
-				if(i >= argc){
+				if(i >= argc) {
 					rt_kprintf("wrong cmd format.\n");
 					return 2;
 				}
 				interval = atoi(argv[i]);
 			}
-			if(strcmp(argv[i], "-n") == 0){
+			if(strcmp(argv[i], "-n") == 0) {
 				i++;
-				if(i >= argc){
+				if(i >= argc) {
 					rt_kprintf("wrong cmd format.\n");
 					return 2;
 				}
 				cnt = atoi(argv[i]);
 			}
-			if(strcmp(argv[i], "-r") == 0){
+			if(strcmp(argv[i], "-r") == 0) {
 				raw_data = 1;
 			}
-			if(strcmp(argv[i], "-nc") == 0){
+			if(strcmp(argv[i], "-nc") == 0) {
 				no_cali = 1;
 			}
 		}
@@ -197,36 +200,44 @@ int cmd_sensor(int argc, char *argv[])
 		{
 			case 1:	//acc
 			{
-				for(uint32_t i = 0 ; i < cnt ; i++){
+				for(uint32_t i = 0 ; i < cnt ; i++) {
 					if(raw_data){
 						int16_t raw_acc[3];
 						sensor_acc_raw_measure(raw_acc);
 						rt_kprintf("raw acc:%d %d %d\n", raw_acc[0], raw_acc[1], raw_acc[2]);
-					}else if(no_cali){
+					} else if(no_cali) {
 						sensor_acc_t acc;
 						sensor_acc_measure(&acc);
 						printf("acc:%f %f %f\n", acc.x, acc.y, acc.z);
+					} else {
+						sensor_acc_t acc;
+						mpdc_pull_data(sensor_acc.mpdc, &acc);
+						printf("cali acc:%f %f %f\n", acc.x, acc.y, acc.z);
 					}
 					if(cnt > 1)
 						rt_thread_delay(interval);
 				}
-			}break;
+			} break;
 			case 2:	//gyr
 			{
-				for(uint32_t i = 0 ; i < cnt ; i++){
-					if(raw_data){
+				for(uint32_t i = 0 ; i < cnt ; i++) {
+					if(raw_data) {
 						int16_t raw_gyr[3];
 						sensor_gyr_raw_measure(raw_gyr);
 						rt_kprintf("raw gyr:%d %d %d\n", raw_gyr[0], raw_gyr[1], raw_gyr[2]);
-					}else if(no_cali){
+					} else if(no_cali) {
 						sensor_gyr_t gyr;
 						sensor_gyr_measure(&gyr);
 						printf("gyr:%f %f %f\n", gyr.x, gyr.y, gyr.z);
+					} else {
+						sensor_gyr_t gyr;
+						mpdc_pull_data(sensor_gyr.mpdc, &gyr);
+						printf("cali acc:%f %f %f\n", gyr.x, gyr.y, gyr.z);
 					}
 					if(cnt > 1)
 						rt_thread_delay(interval);
 				}	
-			}break;
+			} break;
 			default:
 				break;
 		}

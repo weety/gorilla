@@ -7,6 +7,7 @@
  * 2018-10-15     weety      first implementation
  */
 
+#include <stdio.h>
 #include <string.h>
 #include "mpdc.h"
 
@@ -217,7 +218,7 @@ void mpdc_dump(void)
 		rt_kprintf("Status: %s - %s - %s\n", (mpdc->flag & MPDC_FLAG_ADVERTISE) ? "advertised" : "not advertised",
 			(mpdc->flag & MPDC_FLAG_SUBSCRIBE) ? "subscribed" : "not subscribed", 
 			(mpdc->flag & MPDC_FLAG_UPDATED) ? "updated" : "not updated");
-		rt_kprintf("Last update at time %ulld us\n\n", mpdc->timestamp);
+		printf("Last update at time %lld us\n\n", mpdc->timestamp);
 	}
 	rt_mutex_release(&(mpdc_meta.lock));
 }
@@ -230,7 +231,7 @@ int mpdc_init(void)
 	return 0;
 }
 
-INIT_COMPONENT_EXPORT(mpdc_init);
+INIT_DEVICE_EXPORT(mpdc_init);
 
 #ifdef RT_USING_FINSH
 #include <finsh.h>
