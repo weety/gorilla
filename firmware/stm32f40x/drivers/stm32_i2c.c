@@ -363,6 +363,8 @@ void rt_hw_i2c_init(void)
 #else
     I2C_InitTypeDef  I2C_InitStructure;
 
+    RCC_AHB1PeriphClockCmd(RCC_I2C_SCL | RCC_I2C_SDA, ENABLE);
+
     /*!< sEE_I2C Periph clock enable */
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
 
@@ -384,11 +386,11 @@ void rt_hw_i2c_init(void)
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
     GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_UP;
-    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    GPIO_Init(GPIO_PORT_I2C_SCL, &GPIO_InitStructure);
 
     /*!< Configure sEE_I2C pins: SDA */
     GPIO_InitStructure.GPIO_Pin = PIN_I2C_SDA;
-    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    GPIO_Init(GPIO_PORT_I2C_SDA, &GPIO_InitStructure);
 
     /* Connect PXx to I2C_SCL*/
     GPIO_PinAFConfig(GPIO_PORT_I2C_SCL, GPIO_PIN_SRC_SCL, GPIO_AF_I2C1);
