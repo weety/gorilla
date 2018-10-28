@@ -97,10 +97,6 @@ int mpdc_push_data(mpdc_t *mpdc, void *data)
 			ret = -MPDC_ERR_NO_ADVERTISE;
 			goto out;
 	}
-	if (!(mpdc->flag & MPDC_FLAG_SUBSCRIBE)) {
-		ret = -MPDC_ERR_NO_SUBSCRIBE;
-		goto out;
-	}
 
 	MPDC_LOCK();
 	memcpy(mpdc->data, data, mpdc->objsize);
