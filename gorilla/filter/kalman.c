@@ -10,10 +10,7 @@
 
 /********************角度参数**************/ 
 
-float Gyro_y;            //Y轴陀螺仪数据暂存
-float Angle_gy;          //由角速度计算的倾斜角度
-float Accel_x;           //X轴加速度值暂存
-float Angle_ax;          //由加速度计算的倾斜角度
+float Gyro_x;            //X轴陀螺仪数据暂存
 float Angle;             //小车最终倾斜角度
 unsigned char value;     //角度正负极性标记
 
@@ -23,7 +20,7 @@ unsigned char value;     //角度正负极性标记
 float  Q_angle = 0.001;            //小，消除尖锋，但会使波形滞后
 float  Q_gyro = 0.003;              //小，调节波形的跟踪速度，但不相信预测
 float  R_angle = 0.5;
-float  dt = 0.01;                    //dt为kalman滤波器采样时间;
+//float  dt = 0.01;                    //dt为kalman滤波器采样时间;
 char   C_0 = 1;
 float  Q_bias, Angle_err;
 float  PCt_0, PCt_1, E;
@@ -36,7 +33,7 @@ float  PP[2][2] = { { 1, 0 },{ 0, 1 } };
 //*********************************************************
 
 
-void kalman_filter(float Accel, float Gyro)
+void kalman_filter(float Accel, float Gyro, float dt)
 {
 	Angle += (Gyro - Q_bias) * dt; //先验估计
 
@@ -72,7 +69,7 @@ void kalman_filter(float Accel, float Gyro)
 
 	Angle   += K_0 * Angle_err;  //后验估计
 	Q_bias  += K_1 * Angle_err;  //后验估计
-	Gyro_y   = Gyro - Q_bias;    //输出值(后验估计)的微分=角速度
+	Gyro_x   = Gyro - Q_bias;    //输出值(后验估计)的微分=角速度
 
 }
 
