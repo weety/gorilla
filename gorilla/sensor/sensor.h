@@ -48,5 +48,6 @@ typedef struct {
 } sensor_qenc_t;
 
 int gorilla_sensor_init(void);
+void sensor_measure(void);
 
 #endif
