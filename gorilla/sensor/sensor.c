@@ -62,6 +62,7 @@ int gorilla_sensor_init(void)
 
 	mpdc_subscribe(sensor_acc.name, sizeof(sensor_acc_t));
 	mpdc_subscribe(sensor_gyr.name, sizeof(sensor_gyr_t));
+	mpdc_subscribe(sensor_qenc.name, sizeof(sensor_qenc_t));
 
 	return 0;
 }
@@ -122,13 +123,22 @@ rt_err_t sensor_qenc_measure(sensor_qenc_t *qenc)
 	qenc->speed_l = (float)param.count / COUNT_PER_CIRCLE / ((float) param.delta_t * 1e-6);
 	qenc->delta_t_l = param.delta_t;
 
+	err = rt_device_control(sensor_qenc_dev, RT_QUARDENC_CTRL_RESET, (void *)param.channel);
+	if (err) {
+		return err;
+	}
+
 	param.channel = 2;
 	err = rt_device_control(sensor_qenc_dev, RT_QUARDENC_CTRL_GET_VAL, &param);
-	if (!err) {
-		qenc->count_r = param.count;
-		qenc->speed_r = (float)param.count / COUNT_PER_CIRCLE / ((float) param.delta_t * 1e-6);
-		qenc->delta_t_r = param.delta_t;
+	if (err) {
+		return err;
 	}
+
+	qenc->count_r = param.count;
+	qenc->speed_r = (float)param.count / COUNT_PER_CIRCLE / ((float) param.delta_t * 1e-6);
+	qenc->delta_t_r = param.delta_t;
+
+	err = rt_device_control(sensor_qenc_dev, RT_QUARDENC_CTRL_RESET, (void *)param.channel);
 
 	return err;
 }
@@ -166,6 +176,8 @@ int cmd_sensor(int argc, char *argv[])
 			sensor_type = 1;
 		} else if(strcmp(argv[1], "gyr") == 0) {
 			sensor_type = 2;
+		} else if(strcmp(argv[1], "qenc") == 0) {
+			sensor_type = 3;
 		} else {
 			rt_kprintf("unknow parameter:%s\n", argv[1]);
 			return 1;
@@ -233,6 +245,24 @@ int cmd_sensor(int argc, char *argv[])
 						sensor_gyr_t gyr;
 						mpdc_pull_data(sensor_gyr.mpdc, &gyr);
 						printf("cali acc:%f %f %f\n", gyr.x, gyr.y, gyr.z);
+					}
+					if(cnt > 1)
+						rt_thread_delay(interval);
+				}	
+			} break;
+			case 3:	//qenc
+			{
+				for(uint32_t i = 0 ; i < cnt ; i++) {
+					if(raw_data || no_cali) {
+						sensor_qenc_t qenc;
+						mpdc_pull_data(sensor_qenc.mpdc, &qenc);
+						printf("qenc:%d-%lu-%f %d-%lu-%f\n", qenc.count_l, qenc.delta_t_l, qenc.speed_l, 
+							qenc.count_r, qenc.delta_t_r, qenc.speed_r);
+					} else {
+						sensor_qenc_t qenc;
+						mpdc_pull_data(sensor_qenc.mpdc, &qenc);
+						printf("cali qenc:%d-%lu-%f %d-%lu-%f\n", qenc.count_l, qenc.delta_t_l, qenc.speed_l, 
+							qenc.count_r, qenc.delta_t_r, qenc.speed_r);
 					}
 					if(cnt > 1)
 						rt_thread_delay(interval);

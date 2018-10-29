@@ -40,22 +40,23 @@ static struct rt_quardenc_device _quardenc_device;
 
 static rt_size_t _quardenc_read(rt_device_t dev, rt_off_t pos, void *buffer, rt_size_t size)
 {
-    return -RT_ENOSYS;
+	return -RT_ENOSYS;
 }
 
 static rt_size_t _quardenc_write(rt_device_t dev, rt_off_t pos, const void *buffer, rt_size_t size)
 {
-    return -RT_ENOSYS;
+	return -RT_ENOSYS;
 }
 
 static rt_err_t  _quardenc_control(rt_device_t dev, int cmd, void *args)
 {
 	rt_err_t ret = RT_EOK;
-    struct rt_quardenc_param *param;
-    struct rt_quardenc_device *quardenc = (struct rt_quardenc_device *)dev->user_data;
+	uint64_t now;
+	struct rt_quardenc_param *param;
+	struct rt_quardenc_device *quardenc = (struct rt_quardenc_device *)dev->user_data;
 
-    /* check parameters */
-    RT_ASSERT(quardenc != RT_NULL);
+	/* check parameters */
+	RT_ASSERT(quardenc != RT_NULL);
 
 	switch (cmd)
 	{
@@ -72,11 +73,15 @@ static rt_err_t  _quardenc_control(rt_device_t dev, int cmd, void *args)
 			{
 				case 1:
 					param->count = quardenc->tim_l.totol_count * COUNT_PER_CIRCLE + quardenc->tim_l.TIM->CNT;
-					param->delta_t = time_get_us() - quardenc->tim_l.last_time;
+					now = time_get_us();
+					param->delta_t = now - quardenc->tim_l.last_time;
+					quardenc->tim_l.last_time = now;
 					break;
 				case 2:
 					param->count = quardenc->tim_r.totol_count * COUNT_PER_CIRCLE + quardenc->tim_r.TIM->CNT;
-					param->delta_t = time_get_us() - quardenc->tim_r.last_time;
+					now = time_get_us();
+					param->delta_t = now - quardenc->tim_r.last_time;
+					quardenc->tim_r.last_time = now;
 					break;
 				default:
 					break;
@@ -114,7 +119,7 @@ static rt_err_t  _quardenc_control(rt_device_t dev, int cmd, void *args)
 			break;
 	}
 
-    return ret;
+	return ret;
 }
 
 void TIM1_UP_TIM10_IRQHandler(void)
@@ -254,7 +259,7 @@ int rt_hw_quardenc_init(void)
 	_quardenc_device.parent.user_data    = &_quardenc_device;
 
 	/* register a character device */
-    rt_device_register(&_quardenc_device.parent, "qenc", RT_DEVICE_FLAG_RDWR);
+	rt_device_register(&_quardenc_device.parent, "qenc", RT_DEVICE_FLAG_RDWR);
 
 	return RT_EOK;
 }
