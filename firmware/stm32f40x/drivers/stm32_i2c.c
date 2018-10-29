@@ -57,7 +57,13 @@ static rt_int32_t gpio_get_scl(void *data)
 
 static void gpio_udelay(rt_uint32_t us)
 {
-    time_delay_us(us);
+    volatile rt_int32_t i;
+    for (; us > 0; us--)
+    {
+        i = 5;
+        while(i--);
+    }
+
 }
 
 static const struct rt_i2c_bit_ops bit_ops =
@@ -340,7 +346,7 @@ void rt_hw_i2c_init(void)
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_OUT;
     GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
     GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_UP;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
     GPIO_InitStructure.GPIO_Pin = PIN_I2C_SCL;
     GPIO_SetBits(GPIO_PORT_I2C_SCL, PIN_I2C_SCL);
@@ -350,7 +356,7 @@ void rt_hw_i2c_init(void)
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_OUT;
     GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
     GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_UP;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
     GPIO_InitStructure.GPIO_Pin = PIN_I2C_SDA;
     GPIO_SetBits(GPIO_PORT_I2C_SDA, PIN_I2C_SDA);
