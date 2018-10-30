@@ -3,6 +3,7 @@ from building import *
 cwd  = GetCurrentDir()
 src = Split('''
 sensor/sensor.c
+sensor/calibration.c
 moto/pwm.c
 moto/moto.c
 mpdc/mpdc.c

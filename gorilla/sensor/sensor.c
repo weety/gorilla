@@ -60,7 +60,9 @@ int gorilla_sensor_init(void)
 
 	sensor_qenc.mpdc = mpdc_advertise(sensor_qenc.name, sizeof(sensor_qenc_t));
 
+	mpdc_subscribe(sensor_orig_acc.name, sizeof(sensor_acc_t));
 	mpdc_subscribe(sensor_acc.name, sizeof(sensor_acc_t));
+	mpdc_subscribe(sensor_orig_gyr.name, sizeof(sensor_gyr_t));
 	mpdc_subscribe(sensor_gyr.name, sizeof(sensor_gyr_t));
 	mpdc_subscribe(sensor_qenc.name, sizeof(sensor_qenc_t));
 
