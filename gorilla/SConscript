@@ -7,6 +7,7 @@ moto/pwm.c
 moto/moto.c
 mpdc/mpdc.c
 twowheel/twowheel_main.c
+twowheel/param.c
 math/light_matrix.c
 ''')
 
