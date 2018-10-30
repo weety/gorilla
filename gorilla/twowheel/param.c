@@ -182,6 +182,30 @@ int param_dump_info(char *param_name)
 	return 0;
 }
 
+int param_init(void)
+{
+	param_set_float("GYR_X_OFFSET", 0.174777);
+	param_set_float("GYR_Y_OFFSET", -0.002860);
+	param_set_float("GYR_Z_OFFSET", 0.008812);
+	param_set_int32("GYR_CALIB", 1);
+	param_set_float("ACC_X_OFFSET", 0.059039);
+	param_set_float("ACC_Y_OFFSET", 0.144885);
+	param_set_float("ACC_Z_OFFSET", -0.312356);
+	param_set_float("ACC_TRANS_MAT00", 0.999423);
+	param_set_float("ACC_TRANS_MAT01", -0.016716);
+	param_set_float("ACC_TRANS_MAT02", -0.017450);
+	param_set_float("ACC_TRANS_MAT10", -0.016716);
+	param_set_float("ACC_TRANS_MAT11", 0.993418);
+	param_set_float("ACC_TRANS_MAT12", 0.040708);
+	param_set_float("ACC_TRANS_MAT20", -0.017449);
+	param_set_float("ACC_TRANS_MAT21", 0.040708);
+	param_set_float("ACC_TRANS_MAT22", 0.995871);
+	param_set_int32("ACC_CALIB", 1);
+
+	return 0;
+}
+
+INIT_COMPONENT_EXPORT(param_init);
 
 #ifdef RT_USING_FINSH
 #include <finsh.h>
