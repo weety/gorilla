@@ -8,6 +8,8 @@
 
 #include "param.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <rtthread.h>
 
 static param_info_t param_info[] = {
 	/* sensor params */
@@ -56,6 +58,36 @@ int param_set(char *param_name, char *val)
 		}
 		if (p->type == PARAM_TYPE_FLOAT) {
 			p->val.f = atof(val);
+		}
+		return 0;
+	} else {
+		return -1;
+	}
+}
+
+int param_set_float(char *param_name, float val)
+{
+	param_info_t* p = param_get(param_name);
+	if (p != NULL) {
+		if (p->type == PARAM_TYPE_FLOAT) {
+			p->val.f = val;
+		} else {
+			return -2;
+		};
+		return 0;
+	} else {
+		return -1;
+	}
+}
+
+int param_set_int32(char *param_name, int32_t val)
+{
+	param_info_t* p = param_get(param_name);
+	if (p != NULL) {
+		if (p->type == PARAM_TYPE_INT32) {
+			p->val.i = val;
+		} else {
+			return -2;
 		}
 		return 0;
 	} else {
@@ -172,9 +204,11 @@ int cmd_param(int argc, char *argv[])
 				printf("success, %s is set to %s\n", argv[2], argv[3]);
 		}
 	}
+
+	return 0;
 }
 
-FINSH_FUNCTION_EXPORT_ALIAS(cmd_param, __cmd_param, get and set param);
+MSH_CMD_EXPORT_ALIAS(cmd_param, param, param info);
 
 #endif
 

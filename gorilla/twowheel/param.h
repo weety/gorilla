@@ -54,6 +54,8 @@ typedef struct {
 
 param_info_t *param_get(char *param_name);
 int param_set(char *param_name, char *val);
+int param_set_float(char *param_name, float val);
+int param_set_int32(char *param_name, int32_t val);
 int param_get_by_info(param_info_t *param, float *val);
 int param_set_by_info(param_info_t* param, float val);
 uint32_t param_get_info_count(void);
