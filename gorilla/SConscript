@@ -7,9 +7,11 @@ moto/pwm.c
 moto/moto.c
 mpdc/mpdc.c
 twowheel/twowheel_main.c
+math/light_matrix.c
 ''')
 
 CPPPATH = [cwd + '/sensor', cwd + '/moto', cwd + '/mpdc', cwd + '/twowheel']
+CPPPATH += [cwd + '/math']
 
 group = DefineGroup('Gorilla', src, depend = [''], CPPPATH = CPPPATH)
 
