@@ -10,10 +10,12 @@ mpdc/mpdc.c
 twowheel/twowheel_main.c
 twowheel/param.c
 math/light_matrix.c
+filter/kalman.c
+attitude/attitude_estimation.c
 ''')
 
 CPPPATH = [cwd + '/sensor', cwd + '/moto', cwd + '/mpdc', cwd + '/twowheel']
-CPPPATH += [cwd + '/math']
+CPPPATH += [cwd + '/math', cwd + '/filter', cwd + '/attitude']
 
 group = DefineGroup('Gorilla', src, depend = [''], CPPPATH = CPPPATH)
 

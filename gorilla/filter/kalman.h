@@ -9,5 +9,7 @@
 #ifndef __KALMAN_H__
 #define __KALMAN_H__
 
+void kalman_filter(float Accel, float Gyro, float dt);
+
 #endif
 
