@@ -33,7 +33,7 @@ void angle_estimation(float dt)
 
 	mpdc_pull_data(sensor_acc.mpdc, &acc);
 	Accel_y  = acc.y;    //读取X轴加速度
-	Angle_ay = acc.y;    //小角度下 sin(sita) ~= sita
+	Angle_ay = asin(acc.y);    //小角度下 sin(sita) ~= sita
 	//Angle_ax = (Accel_x-570) /16570;   //去除零点偏移,计算得到角度（弧度）
 	//Angle_ax = Angle_ax*1.1*180/3.14;     //弧度转换为度,
 
