@@ -12,8 +12,10 @@
 #include "board.h"
 #include "sensor.h"
 #include "mpu6050.h"
+#include "param.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 sensor_t sensor_acc = SENSOR_OBJ_INIT(sensor_acc);
 sensor_t sensor_orig_acc = SENSOR_OBJ_INIT(sensor_orig_acc);
@@ -92,6 +94,53 @@ rt_err_t sensor_acc_measure(sensor_acc_t *acc)
 	return r_byte == 12 ? RT_EOK : RT_ERROR;
 }
 
+rt_err_t sensor_acc_get_calibrated_data(sensor_acc_t *acc)
+{
+	int i = 0;
+	sensor_acc_t acc_m;
+	rt_err_t res;
+	float acc_f[3];
+	float ofs[3];
+	float trans_mat[3][3];
+	float ofs_acc[3];
+	
+	res = sensor_acc_measure(&acc_m);
+	
+	// push non-calibrated data for calibration
+	mpdc_push_data(sensor_orig_acc.mpdc, &acc_m);
+
+	acc_f[0] = acc_m.x;
+	acc_f[1] = acc_m.y;
+	acc_f[2] = acc_m.z;
+
+	param_get_by_idx(ACC_X_OFFSET, &ofs[0]);
+	param_get_by_idx(ACC_Y_OFFSET, &ofs[1]);
+	param_get_by_idx(ACC_Z_OFFSET, &ofs[2]);
+	param_get_by_idx(ACC_TRANS_MAT00, &trans_mat[0][0]);
+	param_get_by_idx(ACC_TRANS_MAT01, &trans_mat[0][1]);
+	param_get_by_idx(ACC_TRANS_MAT02, &trans_mat[0][2]);
+	param_get_by_idx(ACC_TRANS_MAT10, &trans_mat[1][0]);
+	param_get_by_idx(ACC_TRANS_MAT11, &trans_mat[1][1]);
+	param_get_by_idx(ACC_TRANS_MAT12, &trans_mat[1][1]);
+	param_get_by_idx(ACC_TRANS_MAT20, &trans_mat[2][0]);
+	param_get_by_idx(ACC_TRANS_MAT21, &trans_mat[2][1]);
+	param_get_by_idx(ACC_TRANS_MAT22, &trans_mat[2][2]);
+
+	for (i = 0; i < 3; i++) {
+		ofs_acc[i] = acc_f[i] - ofs[i];
+	}
+	for (i = 0; i < 3; i++) {
+		acc_f[i] = ofs_acc[0]*trans_mat[0][i] + ofs_acc[1]*trans_mat[1][i] + ofs_acc[2]*trans_mat[2][i];
+	}
+
+	acc->x = acc_f[0];
+	acc->y = acc_f[1];
+	acc->z = acc_f[2];
+
+	return res;
+}
+
+
 rt_err_t sensor_gyr_raw_measure(int16_t gyr[3])
 {
 	rt_size_t r_size;
@@ -110,6 +159,33 @@ rt_err_t sensor_gyr_measure(sensor_gyr_t *gyr)
 	gyr->z = data[2];
 	
 	return r_size == 12 ? RT_EOK : RT_ERROR;
+}
+
+rt_err_t sensor_gyr_get_calibrated_data(sensor_gyr_t *gyr)
+{
+	sensor_gyr_t gyr_m;
+	rt_err_t res;
+	
+	float gyr_offset[3];
+	float gyr_gain[3];
+
+	param_get_by_idx(GYR_X_OFFSET, &gyr_offset[0]);
+	param_get_by_idx(GYR_Y_OFFSET, &gyr_offset[1]);
+	param_get_by_idx(GYR_Z_OFFSET, &gyr_offset[2]);
+	param_get_by_idx(GYR_X_GAIN, &gyr_gain[0]);
+	param_get_by_idx(GYR_Y_GAIN, &gyr_gain[1]);
+	param_get_by_idx(GYR_Z_GAIN, &gyr_gain[2]);
+	
+	res = sensor_gyr_measure(&gyr_m);
+						 
+	// push non-calibrated data for calibration
+	mpdc_push_data(sensor_orig_gyr.mpdc, &gyr_m);
+
+	gyr->x = (gyr_m.x + gyr_offset[0]) * gyr_gain[0];
+	gyr->y = (gyr_m.y + gyr_offset[1]) * gyr_gain[1];
+	gyr->z = (gyr_m.z + gyr_offset[2]) * gyr_gain[2];
+
+	return res;
 }
 
 rt_err_t sensor_qenc_measure(sensor_qenc_t *qenc)
@@ -152,12 +228,12 @@ void sensor_measure(void)
 	sensor_gyr_t gyr;
 	sensor_qenc_t qenc;
 
-	if (sensor_acc_measure(&acc) == RT_EOK) {
-		mpdc_push_data(sensor_orig_acc.mpdc, &acc);
+	if (sensor_acc_get_calibrated_data(&acc) == RT_EOK) {
+		mpdc_push_data(sensor_acc.mpdc, &acc);
 	}
 
-	if (sensor_gyr_measure(&gyr) == RT_EOK) {
-		mpdc_push_data(sensor_orig_gyr.mpdc, &gyr);
+	if (sensor_gyr_get_calibrated_data(&gyr) == RT_EOK) {
+		mpdc_push_data(sensor_gyr.mpdc, &gyr);
 	}
 
 	if (sensor_qenc_measure(&qenc) == RT_EOK) {

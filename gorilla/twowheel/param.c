@@ -33,8 +33,6 @@ static param_info_t param_info[] = {
 	PARAM_DEFINE_FLOAT(ACC_TRANS_MAT21, 0.0),
 	PARAM_DEFINE_FLOAT(ACC_TRANS_MAT22, 1.0),
 	PARAM_DEFINE_INT32(ACC_CALIB, 0),
-
-
 };
 
 param_info_t *param_get(char *param_name)
@@ -93,6 +91,52 @@ int param_set_int32(char *param_name, int32_t val)
 	} else {
 		return -1;
 	}
+}
+
+int param_get_by_idx(uint32_t idx, float *val)
+{
+	param_info_t *param;
+
+	if (idx > PARAM_MAX_IDX) {
+		return -1;
+	}
+	param = &param_info[idx];
+	switch (param->type) {
+		case PARAM_TYPE_FLOAT:
+			*val = param->val.f;
+			break;
+		case PARAM_TYPE_INT32:
+			memcpy(&val, &(param->val.i), sizeof(param->val.i));
+			break;
+		default:
+			*val = param->val.f;
+			break;
+	}
+
+	return 0;
+}
+
+int param_set_by_idx(uint32_t idx, float val)
+{
+	param_info_t *param;
+
+	if (idx > PARAM_MAX_IDX) {
+		return -1;
+	}
+	param = &param_info[idx];
+	switch (param->type) {
+		case PARAM_TYPE_FLOAT:
+			param->val.f = val;
+			break;
+		case PARAM_TYPE_INT32:
+			memcpy(&(param->val.i), &val, sizeof(param->val.i));
+			break;
+		default:
+			param->val.f = val;
+			break;
+	}
+
+	return 0;
 }
 
 int param_get_by_info(param_info_t *param, float *val)
