@@ -462,7 +462,7 @@ int do_acc_calibrate_multipoint(uint32_t point)
 				acc_f[2] = acc.z;
 				cali_least_squre_update(&obj, acc_f);
 				//printf("%lf %lf %lf\n", acc_f[0], acc_f[1], acc_f[2]);
-				rt_thread_delay(20);
+				rt_thread_mdelay(20);
 			}
 		} else {
 			goto finish;

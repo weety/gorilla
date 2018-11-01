@@ -121,7 +121,7 @@ rt_err_t sensor_acc_get_calibrated_data(sensor_acc_t *acc)
 	param_get_by_idx(ACC_TRANS_MAT02, &trans_mat[0][2]);
 	param_get_by_idx(ACC_TRANS_MAT10, &trans_mat[1][0]);
 	param_get_by_idx(ACC_TRANS_MAT11, &trans_mat[1][1]);
-	param_get_by_idx(ACC_TRANS_MAT12, &trans_mat[1][1]);
+	param_get_by_idx(ACC_TRANS_MAT12, &trans_mat[1][2]);
 	param_get_by_idx(ACC_TRANS_MAT20, &trans_mat[2][0]);
 	param_get_by_idx(ACC_TRANS_MAT21, &trans_mat[2][1]);
 	param_get_by_idx(ACC_TRANS_MAT22, &trans_mat[2][2]);
