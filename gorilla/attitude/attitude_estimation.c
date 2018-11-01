@@ -9,6 +9,7 @@
 #include "sensor.h"
 #include "attitude_estimation.h"
 #include "kalman.h"
+#include <math.h>
 #include <stdio.h>
 
 extern sensor_t sensor_acc;
