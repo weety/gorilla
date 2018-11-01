@@ -10,6 +10,7 @@
 #include "calibration.h"
 #include "param.h"
 #include "sensor.h"
+#include <math.h>
 #include <finsh.h>
 #include <shell.h>
 
@@ -436,6 +437,73 @@ finish:
 	return 0;
 }
 
+int do_acc_calibrate_multipoint(uint32_t point)
+{
+	sensor_acc_t acc;
+	float acc_f[3];
+	printf("Start to calibrate acc\n");
+
+	Cali_Obj obj;
+	char ch;
+	cali_obj_init(&obj);
+
+	cons_dev_init();
+
+	for (int n = 0; n < point; n++) {
+		printf("For %d point...{Y/N}\n", n+1);
+		ch = shell_wait_ch();
+		if (ch == 'Y' || ch == 'y') {
+			printf("reading data...\n");
+
+			for (int i = 0; i < 100; i ++) {
+				mpdc_pull_data(sensor_orig_acc.mpdc, &acc);
+				acc_f[0] = acc.x;
+				acc_f[1] = acc.y;
+				acc_f[2] = acc.z;
+				cali_least_squre_update(&obj, acc_f);
+				//printf("%lf %lf %lf\n", acc_f[0], acc_f[1], acc_f[2]);
+				rt_thread_delay(20);
+			}
+		} else {
+			goto finish;
+		}
+	}
+
+	cali_solve(&obj, GRAVITY_ACC);
+	printf("Center:%f %f %f\n", obj.OFS[0],obj.OFS[1],obj.OFS[2]);
+	printf("Radius:%f %f %f\n", obj.GAIN[0],obj.GAIN[1],obj.GAIN[2]);
+	printf("Rotation Matrix:\n");
+	for (int row = 0; row < obj.RotM.row; row++) {
+		for (int col = 0; col < obj.RotM.col; col++) {
+			printf("%.4f\t", obj.RotM.element[row][col]);
+		}
+		printf("\n");
+	}
+
+	printf("store to parameter? (Y/N)\n");
+	ch = shell_wait_ch();
+	if (ch == 'Y' || ch == 'y') {
+		param_set_float("ACC_X_OFFSET", obj.OFS[0]);
+		param_set_float("ACC_Y_OFFSET", obj.OFS[1]);
+		param_set_float("ACC_Z_OFFSET", obj.OFS[2]);
+		param_set_float("ACC_TRANS_MAT00", obj.RotM.element[0][0]);
+		param_set_float("ACC_TRANS_MAT01", obj.RotM.element[0][1]);
+		param_set_float("ACC_TRANS_MAT02", obj.RotM.element[0][2]);
+		param_set_float("ACC_TRANS_MAT10", obj.RotM.element[1][0]);
+		param_set_float("ACC_TRANS_MAT11", obj.RotM.element[1][1]);
+		param_set_float("ACC_TRANS_MAT12", obj.RotM.element[1][2]);
+		param_set_float("ACC_TRANS_MAT20", obj.RotM.element[2][0]);
+		param_set_float("ACC_TRANS_MAT21", obj.RotM.element[2][1]);
+		param_set_float("ACC_TRANS_MAT22", obj.RotM.element[2][2]);
+		param_set_int32("ACC_CALIB", 1);
+	}
+
+finish:
+	cons_dev_deinit();
+	cali_obj_delete(&obj);
+	return 0;
+}
+
 int do_gyr_calibrate(void)
 {
 	sensor_gyr_t gyr;
@@ -483,16 +551,21 @@ int do_gyr_calibrate(void)
 int cmd_calibrate(int argc, char** argv)
 {
 	int res = 0;
-	if(argc > 1) {
-		if(strcmp("gyr", argv[1]) == 0){
+
+	if (argc > 1) {
+		if(strcmp("gyr", argv[1]) == 0) {
 			res = do_gyr_calibrate();
 		}
 		
-		if(strcmp("acc", argv[1]) == 0){
+		if(strcmp("acc_old", argv[1]) == 0) {
 			res = do_acc_calibrate();
 		}
+
+		if (strcmp("acc", argv[1]) == 0) {
+			res = do_acc_calibrate_multipoint(14);
+		}
 	}
-	
+
 	return res;
 }
 
