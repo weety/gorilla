@@ -11,6 +11,7 @@ twowheel/twowheel_main.c
 twowheel/param.c
 math/light_matrix.c
 filter/kalman.c
+filter/filter.c
 attitude/attitude_estimation.c
 ''')
 
