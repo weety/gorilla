@@ -52,6 +52,7 @@ void angle_estimation(float dt)
 	kalman_filter(Angle_ay, Gyro_x, dt);       //卡尔曼滤波计算倾角
 
 	angle.angle = Angle;
+	angle.speed = Gyro_x;
 	mpdc_push_data(att_angle.mpdc, &angle);
 }
 

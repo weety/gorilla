@@ -21,6 +21,7 @@ typedef struct {
 
 typedef struct {
 	float angle;
+	float speed;
 } att_angle_t;
 
 int angle_estimation_init(void);
