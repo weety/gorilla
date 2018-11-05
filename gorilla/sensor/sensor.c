@@ -248,6 +248,8 @@ int cmd_sensor(int argc, char *argv[])
 	uint32_t cnt = 1;
 	uint8_t raw_data = 0;
 	uint8_t no_cali = 0;
+	int debug_mode = 0;
+	int debug_val = 0;
 
 	if(argc > 1){
 		if(strcmp(argv[1], "acc") == 0) {
@@ -283,6 +285,16 @@ int cmd_sensor(int argc, char *argv[])
 			}
 			if(strcmp(argv[i], "-nc") == 0) {
 				no_cali = 1;
+			}
+
+			if(strcmp(argv[i], "-dbg") == 0) {
+				debug_mode = 1;
+				i++;
+				if(i >= argc) {
+					rt_kprintf("wrong cmd format.\n");
+					return 2;
+				}
+				debug_val = atoi(argv[i]);
 			}
 		}
 
@@ -344,7 +356,10 @@ int cmd_sensor(int argc, char *argv[])
 					}
 					if(cnt > 1)
 						rt_thread_delay(interval);
-				}	
+				}
+				if (debug_mode) {
+					rt_device_control(sensor_qenc_dev, RT_QUARDENC_CTRL_DEBUG, (void *)debug_val);
+				}
 			} break;
 			default:
 				break;

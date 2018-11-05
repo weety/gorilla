@@ -34,6 +34,7 @@ struct rt_quardenc_device {
 	struct rt_device parent;
 	struct _quardenc_priv tim_l;
 	struct _quardenc_priv tim_r;
+	int debug_mode;
 };
 
 static struct rt_quardenc_device _quardenc_device;
@@ -96,6 +97,11 @@ static rt_err_t  _quardenc_control(rt_device_t dev, int cmd, void *args)
 				ret = -RT_EINVAL;
 				break;
 			}
+
+			if (quardenc->debug_mode) {
+				ret = 0;
+				break;
+			}
 			switch (channel)
 			{
 				case 1:
@@ -111,6 +117,11 @@ static rt_err_t  _quardenc_control(rt_device_t dev, int cmd, void *args)
 				default:
 					break;
 			}
+			break;
+		}
+		case RT_QUARDENC_CTRL_DEBUG:
+		{
+			quardenc->debug_mode = (int)args;
 			break;
 		}
 		default:
@@ -245,6 +256,7 @@ int rt_hw_quardenc_init(void)
 	/* TIM3 enable counter */
 	TIM_Cmd(_quardenc_device.tim_r.TIM, ENABLE);
 
+	_quardenc_device.debug_mode = 0;
 	_quardenc_device.parent.type         = RT_Device_Class_Miscellaneous;
 	_quardenc_device.parent.rx_indicate  = RT_NULL;
 	_quardenc_device.parent.tx_complete  = RT_NULL;

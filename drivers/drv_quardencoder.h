@@ -19,11 +19,12 @@
 
 #include "stm32f4xx.h"
 
-#define COUNT_PER_CIRCLE 4200
+#define COUNT_PER_CIRCLE 54000
 
 /* Control command define */
 #define RT_QUARDENC_CTRL_GET_VAL   0x11
 #define RT_QUARDENC_CTRL_RESET     0x20
+#define RT_QUARDENC_CTRL_DEBUG     0x30
 
 struct rt_quardenc_param 
 {
