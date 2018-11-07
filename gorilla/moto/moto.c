@@ -59,8 +59,7 @@ int moto_left_set_speed(float speed)
 
 int moto_left_stop(void)
 {
-	pwm_set_duty(PWMA_LEFT_MOTO, 0);
-	return pwm_disalbe(PWMA_LEFT_MOTO);
+	return pwm_set_duty(PWMA_LEFT_MOTO, 0);
 }
 
 /* dir: 0,front; 1,back */
@@ -95,8 +94,7 @@ int moto_right_set_speed(float speed)
 
 int moto_right_stop(void)
 {
-	pwm_set_duty(PWMB_RIGHT_MOTO, 0);
-	return pwm_disalbe(PWMB_RIGHT_MOTO);
+	return pwm_set_duty(PWMB_RIGHT_MOTO, 0);
 }
 
 #ifdef RT_USING_FINSH
