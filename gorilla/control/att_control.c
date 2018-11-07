@@ -39,7 +39,7 @@ void speed_control(void)
 	att_control.position += att_control.speed;
 	att_control.position += att_control.target_speed;
 
-	att_control.pwm_out += att_control.speed_kp * att_control.position + att_control.speed_kd * att_control.speed;
+	att_control.pwm_out += att_control.speed_kp * att_control.speed + att_control.speed_ki * att_control.position;
 }
 
 void direction_control(void)
