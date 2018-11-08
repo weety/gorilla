@@ -17,10 +17,6 @@
 typedef struct {
 	float target_speed;
 	float target_turn;
-	float angle_kp;
-	float angle_kd;
-	float speed_kp;
-	float speed_ki;
 	float pwm_out;
 	float pwm_l_out;
 	float pwm_r_out;

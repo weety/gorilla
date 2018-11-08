@@ -35,6 +35,15 @@ typedef enum {
 	ACC_TRANS_MAT22,
 	ACC_CALIB,
 
+	/* PID params */
+	PID_ANGLE_KP,
+	PID_ANGLE_KD,
+	PID_SPEED_KP,
+	PID_SPEED_KI,
+
+	/* misc params */
+	LOST_CTRL_ANGLE,
+
 	PARAM_MAX_IDX,
 } param_index_e;
 

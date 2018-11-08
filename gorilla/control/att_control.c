@@ -18,28 +18,38 @@ att_control_t att_control;
 
 void angle_control(void)
 {
+	float lost_ctrl_angle = 0.0f;
+	float angle_kp = 0.0f;
+	float angle_kd = 0.0f;
 	att_angle_t  angle;
 	mpdc_pull_data(att_angle.mpdc, &angle);
+	param_get_by_idx(LOST_CTRL_ANGLE, &lost_ctrl_angle);
+	param_get_by_idx(PID_ANGLE_KP, &angle_kp);
+	param_get_by_idx(PID_ANGLE_KD, &angle_kd);
 
-	if (fabs(angle.angle) >= LOST_CONTROL_ANGLE) {
+	if (fabs(angle.angle) >= deg_to_rad(lost_ctrl_angle)) {
 		att_control.lost_control_flag = true;
 	} else {
 		att_control.lost_control_flag = false;
 	}
-	att_control.pwm_out = att_control.angle_kp * angle.angle + att_control.angle_kd * angle.speed;
+	att_control.pwm_out = angle_kp * angle.angle + angle_kd * angle.speed;
 }
 
 void speed_control(void)
 {
+	float speed_kp = 0.0f;
+	float speed_ki = 0.0f;
 	float speed;
 	sensor_qenc_t qenc;
 	mpdc_pull_data(sensor_qenc.mpdc, &qenc);
+	param_get_by_idx(PID_SPEED_KP, &speed_kp);
+	param_get_by_idx(PID_SPEED_KI, &speed_ki);
 	speed = (qenc.speed_l + qenc.speed_r) * 0.5f;
 	att_control.speed = first_order_lowpass_filter(att_control.speed, speed, 0.3);
 	att_control.position += att_control.speed;
 	att_control.position += att_control.target_speed;
 
-	att_control.pwm_out += att_control.speed_kp * att_control.speed + att_control.speed_ki * att_control.position;
+	att_control.pwm_out += speed_kp * att_control.speed + speed_ki * att_control.position;
 }
 
 void direction_control(void)
