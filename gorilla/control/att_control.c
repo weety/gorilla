@@ -9,7 +9,10 @@
 #include "moto.h"
 #include "sensor.h"
 #include "filter.h"
+#include "attitude_estimation.h"
+#include "param.h"
 #include "att_control.h"
+#include <math.h>
 
 extern sensor_t sensor_qenc;
 extern att_t att_angle;
@@ -103,7 +106,7 @@ int att_control_main(void)
 {
 	int ret;
 	angle_control();
-	speed_control();
+	//speed_control();
 	direction_control();
 	ret = moto_control();
 

@@ -15,8 +15,10 @@ void fastloop_entry(void *parameter)
 
 void twowheel_entry(void *parameter)
 {
+	att_control_init();
 	while(1) {
 		angle_estimation(0.01f);
+		att_control_main();
 		rt_thread_mdelay(TWOWHEEL_THREAD_PERIOD);
 	}
 }
