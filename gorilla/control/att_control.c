@@ -88,12 +88,12 @@ int moto_control(void)
 
 	r_speed = fabs(att_control.pwm_r_out);
 
-	if (l_speed > 0.6) {
-		l_speed = 0.6;
+	if (l_speed > 0.99f) {
+		l_speed = 0.99f;
 	}
 
-	if (r_speed > 0.6) {
-		r_speed = 0.6;
+	if (r_speed > 0.99f) {
+		r_speed = 0.99f;
 	}
 
 	moto_left_run(l_dir, l_speed);

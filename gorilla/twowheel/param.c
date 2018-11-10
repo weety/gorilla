@@ -39,7 +39,7 @@ static param_info_t param_info[] = {
 	PARAM_DEFINE_FLOAT(PID_SPEED_KP, 0.0f),
 	PARAM_DEFINE_FLOAT(PID_SPEED_KI, 0.0f),
 
-	PARAM_DEFINE_FLOAT(LOST_CTRL_ANGLE, 30),
+	PARAM_DEFINE_FLOAT(LOST_CTRL_ANGLE, 40),
 };
 
 param_info_t *param_get(char *param_name)
