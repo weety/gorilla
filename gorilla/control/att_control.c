@@ -65,6 +65,8 @@ int moto_control(void)
 {
 	int l_dir, r_dir;
 	float l_speed, r_speed;
+	float moto_l_pwm_bd = 0.0f;
+	float moto_r_pwm_bd = 0.0f;
 
 	if (att_control.lost_control_flag) {
 		moto_left_stop();
@@ -87,6 +89,12 @@ int moto_control(void)
 	}
 
 	r_speed = fabs(att_control.pwm_r_out);
+
+	param_get_by_idx(MOTO_L_PWM_BD, &moto_l_pwm_bd);
+	param_get_by_idx(MOTO_R_PWM_BD, &moto_r_pwm_bd);
+
+	l_speed += moto_l_pwm_bd;
+	r_speed += moto_r_pwm_bd;
 
 	if (l_speed > 0.99f) {
 		l_speed = 0.99f;
