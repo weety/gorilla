@@ -198,7 +198,7 @@ rt_err_t sensor_qenc_measure(sensor_qenc_t *qenc)
 		return err;
 	}
 	qenc->count_l = -param.count;
-	qenc->speed_l = (float)param.count / COUNT_PER_CIRCLE / ((float) param.delta_t * 1e-6);
+	qenc->speed_l = (float)qenc->count_l / COUNT_PER_CIRCLE / ((float) param.delta_t * 1e-6);
 	qenc->delta_t_l = param.delta_t;
 
 	err = rt_device_control(sensor_qenc_dev, RT_QUARDENC_CTRL_RESET, (void *)param.channel);
@@ -213,7 +213,7 @@ rt_err_t sensor_qenc_measure(sensor_qenc_t *qenc)
 	}
 
 	qenc->count_r = param.count;
-	qenc->speed_r = (float)param.count / COUNT_PER_CIRCLE / ((float) param.delta_t * 1e-6);
+	qenc->speed_r = (float)qenc->count_r / COUNT_PER_CIRCLE / ((float) param.delta_t * 1e-6);
 	qenc->delta_t_r = param.delta_t;
 
 	err = rt_device_control(sensor_qenc_dev, RT_QUARDENC_CTRL_RESET, (void *)param.channel);

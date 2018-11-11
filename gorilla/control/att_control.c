@@ -52,7 +52,13 @@ void speed_control(void)
 	att_control.position += att_control.speed;
 	att_control.position += att_control.target_speed;
 
-	att_control.pwm_out += speed_kp * att_control.speed + speed_ki * att_control.position;
+	if (att_control.position > 1.0f) {
+		att_control.position = 1.0f;
+	} else if (att_control.position < -1.0f) {
+		att_control.position = -1.0f;
+	}
+
+	att_control.pwm_out -= (speed_kp * att_control.speed + speed_ki * att_control.position);
 }
 
 void direction_control(void)
@@ -114,7 +120,7 @@ int att_control_main(void)
 {
 	int ret;
 	angle_control();
-	//speed_control();
+	speed_control();
 	direction_control();
 	ret = moto_control();
 
