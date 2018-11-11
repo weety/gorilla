@@ -657,10 +657,23 @@ static void DMA_Configuration(struct rt_serial_device *serial) {
     NVIC_Init(&NVIC_InitStructure);
 }
 
+#define RT_UART1_CONFIG           \
+{                                          \
+    BAUD_RATE_57600,  /* 57600 bits/s */  \
+    DATA_BITS_8,      /* 8 databits */     \
+    STOP_BITS_1,      /* 1 stopbit */      \
+    PARITY_NONE,      /* No parity  */     \
+    BIT_ORDER_LSB,    /* LSB first sent */ \
+    NRZ_NORMAL,       /* Normal mode */    \
+    RT_SERIAL_RB_BUFSZ, /* Buffer size */  \
+    0                                      \
+}
+
 int stm32_hw_usart_init(void)
 {
     struct stm32_uart *uart;
     struct serial_configure config = RT_SERIAL_CONFIG_DEFAULT;
+	struct serial_configure config1 = RT_UART1_CONFIG;
 
     RCC_Configuration();
     GPIO_Configuration();
@@ -669,7 +682,7 @@ int stm32_hw_usart_init(void)
     uart = &uart1;
 
     serial1.ops    = &stm32_uart_ops;
-    serial1.config = config;
+    serial1.config = config1;
 
     NVIC_Configuration(&uart1);
 
