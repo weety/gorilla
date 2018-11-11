@@ -197,7 +197,7 @@ rt_err_t sensor_qenc_measure(sensor_qenc_t *qenc)
 	if (err) {
 		return err;
 	}
-	qenc->count_l = param.count;
+	qenc->count_l = -param.count;
 	qenc->speed_l = (float)param.count / COUNT_PER_CIRCLE / ((float) param.delta_t * 1e-6);
 	qenc->delta_t_l = param.delta_t;
 
