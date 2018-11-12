@@ -42,6 +42,7 @@ static param_info_t param_info[] = {
 	PARAM_DEFINE_FLOAT(LOST_CTRL_ANGLE, 40),
 	PARAM_DEFINE_FLOAT(MOTO_L_PWM_BD, 0.0f),
 	PARAM_DEFINE_FLOAT(MOTO_R_PWM_BD, 0.0f),
+	PARAM_DEFINE_FLOAT(SPEED_CTRL_LIMIT, 0.0f),
 };
 
 param_info_t *param_get(char *param_name)

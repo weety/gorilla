@@ -45,6 +45,7 @@ typedef enum {
 	LOST_CTRL_ANGLE,
 	MOTO_L_PWM_BD,
 	MOTO_R_PWM_BD,
+	SPEED_CTRL_LIMIT,
 
 	PARAM_MAX_IDX,
 } param_index_e;

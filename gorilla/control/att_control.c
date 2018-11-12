@@ -42,6 +42,7 @@ void speed_control(void)
 {
 	float speed_kp = 0.0f;
 	float speed_ki = 0.0f;
+	float speed_ctrl_limit = 0.0f;
 	float speed;
 	sensor_qenc_t qenc;
 	mpdc_pull_data(sensor_qenc.mpdc, &qenc);
@@ -52,13 +53,14 @@ void speed_control(void)
 	att_control.position += att_control.speed;
 	att_control.position += att_control.target_speed;
 
-	if (att_control.position > 1.0f) {
-		att_control.position = 1.0f;
-	} else if (att_control.position < -1.0f) {
-		att_control.position = -1.0f;
+	param_get_by_idx(SPEED_CTRL_LIMIT, &speed_ctrl_limit);
+	if (att_control.position > speed_ctrl_limit) {
+		att_control.position = speed_ctrl_limit;
+	} else if (att_control.position < -speed_ctrl_limit) {
+		att_control.position = -speed_ctrl_limit;
 	}
 
-	att_control.pwm_out -= (speed_kp * att_control.speed + speed_ki * att_control.position);
+	att_control.pwm_out += (speed_kp * att_control.speed + speed_ki * att_control.position);
 }
 
 void direction_control(void)
