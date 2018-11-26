@@ -258,6 +258,8 @@ int cmd_sensor(int argc, char *argv[])
 			sensor_type = 2;
 		} else if(strcmp(argv[1], "qenc") == 0) {
 			sensor_type = 3;
+		} else if(strcmp(argv[1], "acc_gyr") == 0) {
+			sensor_type = 4;
 		} else {
 			rt_kprintf("unknow parameter:%s\n", argv[1]);
 			return 1;
@@ -334,7 +336,7 @@ int cmd_sensor(int argc, char *argv[])
 					} else {
 						sensor_gyr_t gyr;
 						mpdc_pull_data(sensor_gyr.mpdc, &gyr);
-						printf("cali acc:%f %f %f\n", gyr.x, gyr.y, gyr.z);
+						printf("cali gyr:%f %f %f\n", gyr.x, gyr.y, gyr.z);
 					}
 					if(cnt > 1)
 						rt_thread_delay(interval);
@@ -360,6 +362,18 @@ int cmd_sensor(int argc, char *argv[])
 				if (debug_mode) {
 					rt_device_control(sensor_qenc_dev, RT_QUARDENC_CTRL_DEBUG, (void *)debug_val);
 				}
+			} break;
+			case 4:	//acc & gyr
+			{
+				for(uint32_t i = 0 ; i < cnt ; i++) {
+					sensor_acc_t acc;
+					sensor_gyr_t gyr;
+					mpdc_pull_data(sensor_acc.mpdc, &acc);
+					mpdc_pull_data(sensor_gyr.mpdc, &gyr);
+					printf("%f %f %f %f %f %f\n", acc.x, acc.y, acc.z, gyr.x, gyr.y, gyr.z);
+					if(cnt > 1)
+						rt_thread_delay(interval);
+				}	
 			} break;
 			default:
 				break;
