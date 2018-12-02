@@ -365,15 +365,32 @@ int cmd_sensor(int argc, char *argv[])
 			} break;
 			case 4:	//acc & gyr
 			{
-				for(uint32_t i = 0 ; i < cnt ; i++) {
-					sensor_acc_t acc;
-					sensor_gyr_t gyr;
-					mpdc_pull_data(sensor_acc.mpdc, &acc);
-					mpdc_pull_data(sensor_gyr.mpdc, &gyr);
-					printf("%f %f %f %f %f %f\n", acc.x, acc.y, acc.z, gyr.x, gyr.y, gyr.z);
+				uint32_t i = 0;
+				sensor_acc_t *acc_buf = rt_malloc(sizeof(sensor_acc_t) * cnt);
+				sensor_gyr_t *gyr_buf = rt_malloc(sizeof(sensor_gyr_t) * cnt);
+				if (!acc_buf || !gyr_buf) {
+					if (acc_buf)
+						rt_free(acc_buf);
+					if (gyr_buf)
+						rt_free(gyr_buf);
+					printf("No memory\n");
+					return -1;
+				}
+				for(i = 0 ; i < cnt ; i++) {
+					mpdc_pull_data(sensor_acc.mpdc, &acc_buf[i]);
+					mpdc_pull_data(sensor_gyr.mpdc, &gyr_buf[i]);
 					if(cnt > 1)
 						rt_thread_delay(interval);
-				}	
+				}
+				for(i = 0 ; i < cnt ; i++) {
+					printf("%f %f %f %f %f %f\n", acc_buf[i].x, acc_buf[i].y, acc_buf[i].z,
+						gyr_buf[i].x, gyr_buf[i].y, gyr_buf[i].z);
+				}
+
+				if (acc_buf)
+					rt_free(acc_buf);
+				if (gyr_buf)
+					rt_free(gyr_buf);
 			} break;
 			default:
 				break;
