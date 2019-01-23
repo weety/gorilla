@@ -43,6 +43,7 @@ static param_info_t param_info[] = {
 	PARAM_DEFINE_FLOAT(MOTO_L_PWM_BD, 0.0f),
 	PARAM_DEFINE_FLOAT(MOTO_R_PWM_BD, 0.0f),
 	PARAM_DEFINE_FLOAT(SPEED_CTRL_LIMIT, 0.0f),
+	PARAM_DEFINE_INT32(SPEED_SAMPLE_INTERVAL, 0),
 };
 
 param_info_t *param_get(char *param_name)
@@ -108,6 +109,7 @@ int param_get_by_idx(uint32_t idx, float *val)
 	param_info_t *param;
 
 	if (idx > PARAM_MAX_IDX) {
+		rt_kprintf("Invalid param %d\n", idx);
 		return -1;
 	}
 	param = &param_info[idx];
@@ -116,7 +118,7 @@ int param_get_by_idx(uint32_t idx, float *val)
 			*val = param->val.f;
 			break;
 		case PARAM_TYPE_INT32:
-			memcpy(&val, &(param->val.i), sizeof(param->val.i));
+			memcpy(val, &(param->val.i), sizeof(param->val.i));
 			break;
 		default:
 			*val = param->val.f;

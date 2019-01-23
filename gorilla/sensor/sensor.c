@@ -227,6 +227,8 @@ void sensor_measure(void)
 	sensor_acc_t acc;
 	sensor_gyr_t gyr;
 	sensor_qenc_t qenc;
+	int speed_sample_interval;
+	static int speed_sample_cnt = 0;
 
 	if (sensor_acc_get_calibrated_data(&acc) == RT_EOK) {
 		mpdc_push_data(sensor_acc.mpdc, &acc);
@@ -236,8 +238,13 @@ void sensor_measure(void)
 		mpdc_push_data(sensor_gyr.mpdc, &gyr);
 	}
 
-	if (sensor_qenc_measure(&qenc) == RT_EOK) {
-		mpdc_push_data(sensor_qenc.mpdc, &qenc);
+	param_get_by_idx(SPEED_SAMPLE_INTERVAL, &speed_sample_interval);
+	speed_sample_cnt++;
+	if (speed_sample_cnt >= speed_sample_interval) {
+		speed_sample_cnt = 0;
+		if (sensor_qenc_measure(&qenc) == RT_EOK) {
+			mpdc_push_data(sensor_qenc.mpdc, &qenc);
+		}
 	}
 }
 

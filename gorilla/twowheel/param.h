@@ -46,6 +46,7 @@ typedef enum {
 	MOTO_L_PWM_BD,
 	MOTO_R_PWM_BD,
 	SPEED_CTRL_LIMIT,
+	SPEED_SAMPLE_INTERVAL,
 
 	PARAM_MAX_IDX,
 } param_index_e;
