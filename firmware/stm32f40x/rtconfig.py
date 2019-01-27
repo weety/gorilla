@@ -1,4 +1,5 @@
 import os
+import sys
 
 # toolchains options
 ARCH='arm'
@@ -12,7 +13,10 @@ if os.getenv('RTT_CC'):
 # EXEC_PATH is the compiler execute path, for example, CodeSourcery, Keil MDK, IAR
 if  CROSS_TOOL == 'gcc':
     PLATFORM 	= 'gcc'
-    EXEC_PATH 	= r'D:/gcc-arm-none-eabi-5_4-2016q3-20160926-win32/bin'
+    if 'win' in sys.platform:
+        EXEC_PATH = r'D:/gcc-arm-none-eabi-5_4-2016q3-20160926-win32/bin'
+    else:
+        EXEC_PATH = '/usr/bin'
 elif CROSS_TOOL == 'keil':
     PLATFORM 	= 'armcc'
     EXEC_PATH 	= r'C:/Keil'
