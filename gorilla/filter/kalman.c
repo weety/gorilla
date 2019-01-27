@@ -19,7 +19,7 @@ unsigned char value;     //角度正负极性标记
 		
 float  Q_angle = 0.001;            //小，消除尖锋，但会使波形滞后
 float  Q_gyro = 0.003;              //小，调节波形的跟踪速度，但不相信预测
-float  R_angle = 0.5;
+float  R_angle = 0.8;
 //float  dt = 0.01;                    //dt为kalman滤波器采样时间;
 char   C_0 = 1;
 float  Q_bias, Angle_err;
