@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 PI = 3.1415926
 
 # read data from file
-file = open("sensor_data.txt","r")
+file = open("sensor_data_delta2.txt","r")
 list_arr = file.readlines()
 l = len(list_arr)
 for i in range(l): 
@@ -28,8 +28,8 @@ dt = 0.01
 
 A = np.mat([[1, -dt], [0,1]])
 B = np.mat([[dt], [0]])
-Q = np.mat([[0.001, 0], [0, 0.003]])
-R = np.mat([0.05])
+Q = np.mat([[0.00001, 0], [0, 0.00003]])
+R = np.mat([0.8])
 H = np.mat([1,0])
 I = np.mat(np.eye(2,2))
 
