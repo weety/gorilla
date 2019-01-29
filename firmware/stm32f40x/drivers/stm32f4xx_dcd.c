@@ -8,7 +8,7 @@
 #include "usb_core.h"
 #include "usb_dcd.h"
 #include "usb_dcd_int.h"
-#include "usbd_ioreq.h"
+//#include "usbd_ioreq.h"
 #include "usb_bsp.h"
 
 static struct udcd stm32_dcd;
@@ -25,6 +25,12 @@ static struct ep_id _ep_pool[] =
     {0x3,  USB_EP_ATTR_BULK,        USB_DIR_OUT,    64, ID_UNASSIGNED},
     {0xFF, USB_EP_ATTR_TYPE_MASK,   USB_DIR_MASK,   0,  ID_ASSIGNED  },
 };
+
+typedef enum {
+  USBD_OK   = 0,
+  USBD_BUSY,
+  USBD_FAIL,
+} USBD_Status;
 
 void OTG_FS_IRQHandler(void)
 {
@@ -57,7 +63,6 @@ USBD_Status USBD_DeInit(USB_OTG_CORE_HANDLE *pdev)
 * @param  pdev: device instance
 * @retval status
 */
-static struct ureqest setup;
 static rt_uint8_t USBD_SetupStage(USB_OTG_CORE_HANDLE *pdev)
 {
     rt_usbd_ep0_setup_handler(&stm32_dcd, (struct urequest *)pdev->dev.setup_packet);
@@ -359,7 +364,7 @@ static rt_err_t stm32_dcd_init(rt_device_t device)
     return RT_EOK;
 }
 
-void rt_hw_usbd_init(void)
+int rt_hw_usbd_init(void)
 {
     stm32_dcd.parent.type = RT_Device_Class_USBDevice;
     stm32_dcd.parent.init = stm32_dcd_init;
@@ -371,6 +376,8 @@ void rt_hw_usbd_init(void)
 
     rt_device_register(&stm32_dcd.parent, "usbd", 0);
     rt_usb_device_init();
+
+    return 0;
 }
 
 INIT_DEVICE_EXPORT(rt_hw_usbd_init);

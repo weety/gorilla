@@ -59,9 +59,9 @@
  #define HOST_POWERSW_VBUS                 GPIO_Pin_9
 #else
  #ifdef USE_USB_OTG_FS
-  #define HOST_POWERSW_PORT_RCC            RCC_AHB1Periph_GPIOH
-  #define HOST_POWERSW_PORT                GPIOH
-  #define HOST_POWERSW_VBUS                GPIO_Pin_5
+  #define HOST_POWERSW_PORT_RCC            RCC_AHB1Periph_GPIOA
+  #define HOST_POWERSW_PORT                GPIOA
+  #define HOST_POWERSW_VBUS                GPIO_Pin_9
  #endif
 #endif
 

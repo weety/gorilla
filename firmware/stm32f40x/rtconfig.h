@@ -149,7 +149,17 @@
 /* Using USB */
 
 /* RT_USING_USB_HOST is not set */
-/* RT_USING_USB_DEVICE is not set */
+#define RT_USING_USB_DEVICE
+#define RT_USBD_THREAD_STACK_SZ 4096
+#define USB_VENDOR_ID 0x483
+#define USB_PRODUCT_ID 0x5740
+/* RT_USB_DEVICE_COMPOSITE is not set */
+/* _RT_USB_DEVICE_NONE is not set */
+#define _RT_USB_DEVICE_CDC
+/* _RT_USB_DEVICE_MSTORAGE is not set */
+/* _RT_USB_DEVICE_HID is not set */
+/* _RT_USB_DEVICE_WINUSB is not set */
+#define RT_USB_DEVICE_CDC
 
 /* POSIX layer and C standard library */
 
