@@ -20,6 +20,15 @@ if GetDepend('RT_USING_PIN'):
 if GetDepend('RT_USING_I2C'):
     src += ['stm32_i2c.c']
 
+# add USB driver.
+if GetDepend('RT_USING_USB_HOST'):
+    src+= ['stm32f4xx_hcd.c']
+    src+= ['usb_bsp.c']
+
+if GetDepend('RT_USING_USB_DEVICE'):
+    src+= ['usb_bsp.c']
+    src+= ['stm32f4xx_dcd.c']
+
 CPPPATH = [cwd]
 
 group = DefineGroup('Drivers', src, depend = [''], CPPPATH = CPPPATH)
