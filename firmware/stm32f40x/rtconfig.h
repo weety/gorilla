@@ -7,6 +7,7 @@
 /* RT-Thread Kernel */
 
 #define RT_NAME_MAX 8
+/* RT_USING_SMP is not set */
 #define RT_ALIGN_SIZE 4
 /* RT_THREAD_PRIORITY_8 is not set */
 #define RT_THREAD_PRIORITY_32
@@ -15,6 +16,7 @@
 #define RT_TICK_PER_SECOND 100
 #define RT_USING_OVERFLOW_CHECK
 #define RT_USING_HOOK
+#define RT_USING_IDLE_HOOK
 #define RT_IDEL_HOOK_LIST_SIZE 4
 #define IDLE_THREAD_STACK_SIZE 1024
 /* RT_USING_TIMER_SOFT is not set */
@@ -58,6 +60,7 @@
 #define RT_USING_CONSOLE
 #define RT_CONSOLEBUF_SIZE 128
 #define RT_CONSOLE_DEVICE_NAME "uart1"
+#define RT_VER_NUM 0x40001
 #define ARCH_ARM
 #define ARCH_ARM_CORTEX_M
 #define ARCH_ARM_CORTEX_M4
@@ -126,16 +129,20 @@
 #define RT_USING_DEVICE_IPC
 #define RT_PIPE_BUFSZ 512
 #define RT_USING_SERIAL
+#define RT_SERIAL_USING_DMA
+#define RT_SERIAL_RB_BUFSZ 64
 /* RT_USING_CAN is not set */
 /* RT_USING_HWTIMER is not set */
 /* RT_USING_CPUTIME is not set */
 #define RT_USING_I2C
 #define RT_USING_I2C_BITOPS
 #define RT_USING_PIN
+/* RT_USING_ADC is not set */
 /* RT_USING_PWM is not set */
 /* RT_USING_MTD_NOR is not set */
 /* RT_USING_MTD_NAND is not set */
 /* RT_USING_MTD is not set */
+/* RT_USING_PM is not set */
 /* RT_USING_RTC is not set */
 /* RT_USING_SDIO is not set */
 /* RT_USING_SPI is not set */
@@ -160,6 +167,11 @@
 /* _RT_USB_DEVICE_HID is not set */
 /* _RT_USB_DEVICE_WINUSB is not set */
 #define RT_USB_DEVICE_CDC
+#define RT_VCOM_TASK_STK_SIZE 512
+#define RT_VCOM_TX_USE_DMA
+#define RT_VCOM_SERNO "32021919830108"
+#define RT_VCOM_SER_LEN 14
+#define RT_VCOM_TX_TIMEOUT 1000
 
 /* POSIX layer and C standard library */
 
@@ -197,11 +209,14 @@
 
 /* RT_USING_LOGTRACE is not set */
 /* RT_USING_RYM is not set */
+/* RT_USING_ULOG is not set */
+/* RT_USING_UTEST is not set */
 
 /* ARM CMSIS */
 
 /* RT_USING_CMSIS_OS is not set */
 /* RT_USING_RTT_CMSIS is not set */
+/* RT_USING_LWP is not set */
 
 /* RT-Thread online packages */
 
@@ -209,6 +224,7 @@
 
 /* PKG_USING_PAHOMQTT is not set */
 /* PKG_USING_WEBCLIENT is not set */
+/* PKG_USING_WEBNET is not set */
 /* PKG_USING_MONGOOSE is not set */
 /* PKG_USING_WEBTERMINAL is not set */
 /* PKG_USING_CJSON is not set */
@@ -230,6 +246,7 @@
 /* PKG_USING_NOPOLL is not set */
 /* PKG_USING_NETUTILS is not set */
 /* PKG_USING_AT_DEVICE is not set */
+/* PKG_USING_WIZNET is not set */
 
 /* IoT Cloud */
 
@@ -237,6 +254,7 @@
 /* PKG_USING_GAGENT_CLOUD is not set */
 /* PKG_USING_ALI_IOTKIT is not set */
 /* PKG_USING_AZURE is not set */
+/* PKG_USING_TENCENT_IOTKIT is not set */
 
 /* security packages */
 
@@ -261,6 +279,9 @@
 /* PKG_USING_EASYFLASH is not set */
 /* PKG_USING_EASYLOGGER is not set */
 /* PKG_USING_SYSTEMVIEW is not set */
+/* PKG_USING_RDB is not set */
+/* PKG_USING_QRCODE is not set */
+/* PKG_USING_ULOG_EASYFLASH is not set */
 
 /* system packages */
 
@@ -274,16 +295,23 @@
 /* PKG_USING_SQLITE is not set */
 /* PKG_USING_RTI is not set */
 /* PKG_USING_LITTLEVGL2RTT is not set */
+/* PKG_USING_CMSIS is not set */
+/* PKG_USING_DFS_YAFFS is not set */
+/* PKG_USING_LITTLEFS is not set */
 
 /* peripheral libraries and drivers */
 
-/* PKG_USING_STM32F4_HAL is not set */
-/* PKG_USING_STM32F4_DRIVERS is not set */
 /* PKG_USING_REALTEK_AMEBA is not set */
 /* PKG_USING_SHT2X is not set */
 /* PKG_USING_AHT10 is not set */
 /* PKG_USING_AP3216C is not set */
 /* PKG_USING_STM32_SDIO is not set */
+/* PKG_USING_ICM20608 is not set */
+/* PKG_USING_U8G2 is not set */
+/* PKG_USING_BUTTON is not set */
+/* PKG_USING_MPU6XXX is not set */
+/* PKG_USING_PCF8574 is not set */
+/* PKG_USING_KENDRYTE_SDK is not set */
 
 /* miscellaneous packages */
 
@@ -296,8 +324,8 @@
 /* PKG_USING_CANFESTIVAL is not set */
 /* PKG_USING_ZLIB is not set */
 /* PKG_USING_DSTR is not set */
-
-/* sample package */
+/* PKG_USING_TINYFRAME is not set */
+/* PKG_USING_KENDRYTE_DEMO is not set */
 
 /* samples: kernel and components samples */
 
@@ -305,10 +333,8 @@
 /* PKG_USING_FILESYSTEM_SAMPLES is not set */
 /* PKG_USING_NETWORK_SAMPLES is not set */
 /* PKG_USING_PERIPHERAL_SAMPLES is not set */
-
-/* example package: hello */
-
 /* PKG_USING_HELLO is not set */
+/* PKG_USING_VI is not set */
 #define SOC_STM32F4
 #define RT_USING_UART1
 #define RT_USING_UART2
