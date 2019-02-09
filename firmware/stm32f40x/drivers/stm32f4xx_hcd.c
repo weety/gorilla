@@ -22,285 +22,17 @@
 #include "usbh_hcs.h"
 #include "usb_bsp.h"
 
-#ifdef RT_USING_USB_HOST
-struct usbh_xfer
-{
-    uint16_t fnum;
-    uint16_t size;
-    uint8_t  *buffer;
-    upipe_t  pipe;
-    uint8_t  flag;
-};
-
-#define MAX_HC 8
-#define PXFER_FLAG_READY 0x01
-static struct usbh_xfer _xfer[MAX_HC];
-static struct uhcd susb_hcd;
-static struct uhubinst root_hub;
-static rt_bool_t ignore_disconnect = RT_FALSE;
-
-static struct rt_semaphore sem_lock;
-
+#define OTG_FS_PORT 1
+static struct uhcd stm32_hcd;
+static struct rt_completion urb_completion;
+static USBH_HOST USB_Host;
 ALIGN(4) static USB_OTG_CORE_HANDLE USB_OTG_Core;
-ALIGN(4) static USBH_HOST USB_Host;
 
 void OTG_FS_IRQHandler(void)
 {
+    rt_interrupt_enter();
     USBH_OTG_ISR_Handler(&USB_OTG_Core);
-}
-
-/**
-  * @brief  USBH_HandleControl
-  *         Handles the USB control transfer state machine
-  * @param  pdev: Selected device
-  * @retval Status
-  */
-USBH_Status USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
-{
-    uint8_t direction;
-    static uint16_t timeout = 0;
-    USBH_Status status = USBH_OK;
-    URB_STATE URB_Status = URB_IDLE;
-
-    phost->Control.status = CTRL_START;
-
-    switch (phost->Control.state)
-    {
-    case CTRL_SETUP:
-        /* send a SETUP packet */
-        USBH_CtlSendSetup     (pdev,
-                               phost->Control.setup.d8 ,
-                               phost->Control.hc_num_out);
-        phost->Control.state = CTRL_SETUP_WAIT;
-        break;
-
-    case CTRL_SETUP_WAIT:
-
-        URB_Status = HCD_GetURB_State(pdev , phost->Control.hc_num_out);
-        /* case SETUP packet sent successfully */
-        if(URB_Status == URB_DONE)
-        {
-            direction = (phost->Control.setup.b.bmRequestType & USB_REQ_DIR_MASK);
-
-            /* check if there is a data stage */
-            if (phost->Control.setup.b.wLength.w != 0 )
-            {
-                timeout = DATA_STAGE_TIMEOUT;
-                if (direction == USB_D2H)
-                {
-                    /* Data Direction is IN */
-                    phost->Control.state = CTRL_DATA_IN;
-                }
-                else
-                {
-                    /* Data Direction is OUT */
-                    phost->Control.state = CTRL_DATA_OUT;
-                }
-            }
-            /* No DATA stage */
-            else
-            {
-                timeout = NODATA_STAGE_TIMEOUT;
-
-                /* If there is No Data Transfer Stage */
-                if (direction == USB_D2H)
-                {
-                    /* Data Direction is IN */
-                    phost->Control.state = CTRL_STATUS_OUT;
-                }
-                else
-                {
-                    /* Data Direction is OUT */
-                    phost->Control.state = CTRL_STATUS_IN;
-                }
-            }
-            /* Set the delay timer to enable timeout for data stage completion */
-            phost->Control.timer = HCD_GetCurrentFrame(pdev);
-        }
-        else if(URB_Status == URB_ERROR)
-        {
-            phost->Control.state = CTRL_ERROR;
-            phost->Control.status = CTRL_XACTERR;
-        }
-        break;
-
-    case CTRL_DATA_IN:
-        /* Issue an IN token */
-        USBH_CtlReceiveData(pdev,
-                            phost->Control.buff,
-                            phost->Control.length,
-                            phost->Control.hc_num_in);
-
-        phost->Control.state = CTRL_DATA_IN_WAIT;
-        break;
-
-    case CTRL_DATA_IN_WAIT:
-
-        URB_Status = HCD_GetURB_State(pdev , phost->Control.hc_num_in);
-
-        /* check is DATA packet transfered successfully */
-        if  (URB_Status == URB_DONE)
-        {
-            phost->Control.state = CTRL_STATUS_OUT;
-        }
-
-        /* manage error cases*/
-        if  (URB_Status == URB_STALL)
-        {
-            /* In stall case, return to previous machine state*/
-            phost->gState =   phost->gStateBkp;
-        }
-        else if (URB_Status == URB_ERROR)
-        {
-            /* Device error */
-            phost->Control.state = CTRL_ERROR;
-        }
-        else if ((HCD_GetCurrentFrame(pdev)- phost->Control.timer) > timeout)
-        {
-            /* timeout for IN transfer */
-            phost->Control.state = CTRL_ERROR;
-        }
-        break;
-
-    case CTRL_DATA_OUT:
-        /* Start DATA out transfer (only one DATA packet)*/
-        pdev->host.hc[phost->Control.hc_num_out].toggle_out = 1;
-
-        USBH_CtlSendData (pdev,
-                          phost->Control.buff,
-                          phost->Control.length ,
-                          phost->Control.hc_num_out);
-
-
-
-
-
-        phost->Control.state = CTRL_DATA_OUT_WAIT;
-        break;
-
-    case CTRL_DATA_OUT_WAIT:
-
-        URB_Status = HCD_GetURB_State(pdev , phost->Control.hc_num_out);
-        if  (URB_Status == URB_DONE)
-        {   /* If the Setup Pkt is sent successful, then change the state */
-            phost->Control.state = CTRL_STATUS_IN;
-        }
-
-        /* handle error cases */
-        else if  (URB_Status == URB_STALL)
-        {
-            /* In stall case, return to previous machine state*/
-            phost->gState =   phost->gStateBkp;
-            phost->Control.state = CTRL_STALLED;
-        }
-        else if  (URB_Status == URB_NOTREADY)
-        {
-            /* Nack received from device */
-            phost->Control.state = CTRL_DATA_OUT;
-        }
-        else if (URB_Status == URB_ERROR)
-        {
-            /* device error */
-            phost->Control.state = CTRL_ERROR;
-        }
-        break;
-
-
-    case CTRL_STATUS_IN:
-        /* Send 0 bytes out packet */
-        USBH_CtlReceiveData (pdev,
-                             0,
-                             0,
-                             phost->Control.hc_num_in);
-
-        phost->Control.state = CTRL_STATUS_IN_WAIT;
-
-        break;
-
-    case CTRL_STATUS_IN_WAIT:
-
-        URB_Status = HCD_GetURB_State(pdev , phost->Control.hc_num_in);
-
-        if  ( URB_Status == URB_DONE)
-        {   /* Control transfers completed, Exit the State Machine */
-            phost->gState =   phost->gStateBkp;
-            phost->Control.state = CTRL_COMPLETE;
-        }
-
-        else if (URB_Status == URB_ERROR)
-        {
-            phost->Control.state = CTRL_ERROR;
-        }
-
-        else if((HCD_GetCurrentFrame(pdev)\
-                 - phost->Control.timer) > timeout)
-        {
-            phost->Control.state = CTRL_ERROR;
-        }
-        else if(URB_Status == URB_STALL)
-        {
-            /* Control transfers completed, Exit the State Machine */
-            phost->gState =   phost->gStateBkp;
-            phost->Control.status = CTRL_STALL;
-            status = USBH_NOT_SUPPORTED;
-        }
-        break;
-
-    case CTRL_STATUS_OUT:
-        pdev->host.hc[phost->Control.hc_num_out].toggle_out ^= 1;
-        USBH_CtlSendData (pdev,
-                          0,
-                          0,
-                          phost->Control.hc_num_out);
-
-        phost->Control.state = CTRL_STATUS_OUT_WAIT;
-        break;
-
-    case CTRL_STATUS_OUT_WAIT:
-
-        URB_Status = HCD_GetURB_State(pdev , phost->Control.hc_num_out);
-        if  (URB_Status == URB_DONE)
-        {
-            phost->gState =   phost->gStateBkp;
-            phost->Control.state = CTRL_COMPLETE;
-        }
-        else if  (URB_Status == URB_NOTREADY)
-        {
-            phost->Control.state = CTRL_STATUS_OUT;
-        }
-        else if (URB_Status == URB_ERROR)
-        {
-            phost->Control.state = CTRL_ERROR;
-        }
-        break;
-
-    case CTRL_ERROR:
-        /*
-        After a halt condition is encountered or an error is detected by the
-        host, a control endpoint is allowed to recover by accepting the next Setup
-        PID; i.e., recovery actions via some other pipe are not required for control
-        endpoints. For the Default Control Pipe, a device reset will ultimately be
-        required to clear the halt or error condition if the next Setup PID is not
-        accepted.
-        */
-        if (++ phost->Control.errorcount <= USBH_MAX_ERROR_COUNT)
-        {
-            /* Do the transmission again, starting from SETUP Packet */
-            phost->Control.state = CTRL_SETUP;
-        }
-        else
-        {
-            phost->Control.status = CTRL_FAIL;
-            phost->gState =   phost->gStateBkp;
-
-            status = USBH_FAIL;
-        }
-        break;
-
-    default:
-        break;
-    }
-    return status;
+    rt_interrupt_leave();
 }
 
 /**
@@ -312,8 +44,7 @@ USBH_Status USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
 USBH_Status USBH_DeInit(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
 {
     /* Software Init */
-    
-    rt_memset(_xfer, 0, sizeof(_xfer));
+
     phost->gState = HOST_IDLE;
     phost->gStateBkp = HOST_IDLE;
     phost->EnumState = ENUM_IDLE;
@@ -327,9 +58,11 @@ USBH_Status USBH_DeInit(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
 
     USBH_Free_Channel  (pdev, phost->Control.hc_num_in);
     USBH_Free_Channel  (pdev, phost->Control.hc_num_out);
-    rt_memset(_xfer, 0, sizeof(_xfer));
+
     return USBH_OK;
 }
+
+static __IO rt_bool_t connect_status = RT_FALSE;
 
 /**
   * @brief  USBH_Connect
@@ -337,35 +70,17 @@ USBH_Status USBH_DeInit(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
   * @param  selected device
   * @retval none
   */
-rt_uint8_t susb_connect (USB_OTG_CORE_HANDLE *pdev)
+rt_uint8_t usbh_connect (USB_OTG_CORE_HANDLE *pdev)
 {
-    struct uhost_msg msg;
+    rt_kprintf("usbh_connect\n");
 
-    pdev->host.ConnSts = 1;
-
-    rt_kprintf("susb_connect\n");
-
-    if(root_hub.port_status[0] & PORT_CCS) return 0;
-    if(ignore_disconnect == RT_TRUE) return 0;
-
-    USB_Host.Control.hc_num_out = USBH_Alloc_Channel(&USB_OTG_Core, 0x00);
-    USB_Host.Control.hc_num_in = USBH_Alloc_Channel(&USB_OTG_Core, 0x80);
-    USB_Host.device_prop.speed = HCD_GetCurrentSpeed(&USB_OTG_Core);
-
-    /* Open Control pipes */
-    USBH_Open_Channel(&USB_OTG_Core, USB_Host.Control.hc_num_in,
-                      USB_Host.device_prop.address,USB_Host.device_prop.speed, EP_TYPE_CTRL,
-                      USB_Host.Control.ep0size);
-
-    /* Open Control pipes */
-    USBH_Open_Channel(&USB_OTG_Core, USB_Host.Control.hc_num_out,
-                      USB_Host.device_prop.address, USB_Host.device_prop.speed,
-                      EP_TYPE_CTRL, USB_Host.Control.ep0size);
-
-    root_hub.port_status[0] |= (PORT_CCS | PORT_CCSC);
-    msg.type = USB_MSG_CONNECT_CHANGE;
-    msg.content.uhub = &root_hub;
-    rt_usb_post_event(&msg, sizeof(struct uhost_msg));
+    uhcd_t hcd = &stm32_hcd;
+    if (!connect_status)
+    {
+        connect_status = RT_TRUE;
+        RT_DEBUG_LOG(RT_DEBUG_USB, ("connected\n"));
+        rt_usbh_root_hub_connect_handler(hcd, OTG_FS_PORT, RT_FALSE);
+    }
 
     return 0;
 }
@@ -376,29 +91,23 @@ rt_uint8_t susb_connect (USB_OTG_CORE_HANDLE *pdev)
   * @param  selected device
   * @retval none
   */
-rt_uint8_t susb_disconnect (USB_OTG_CORE_HANDLE *pdev)
+rt_uint8_t usbh_disconnect (USB_OTG_CORE_HANDLE *pdev)
 {
-    struct uhost_msg msg;
-
-    pdev->host.ConnSts = 0;
-
-    rt_kprintf("susb_disconnect\n");
-
-    USBH_DeInit(&USB_OTG_Core , &USB_Host);
-    USBH_DeAllocate_AllChannel(&USB_OTG_Core);
-    USB_Host.gState = HOST_IDLE;
-
-    root_hub.port_status[0] |= PORT_CCSC;
-    root_hub.port_status[0] &= ~PORT_CCS;
-    msg.type = USB_MSG_CONNECT_CHANGE;
-    msg.content.uhub = &root_hub;
-    rt_usb_post_event(&msg, sizeof(struct uhost_msg));
+    rt_kprintf("usbh_disconnect\n");
+    uhcd_t hcd = &stm32_hcd;
+    if (connect_status)
+    {
+        connect_status = RT_FALSE;
+        RT_DEBUG_LOG(RT_DEBUG_USB, ("disconnnect\n"));
+        rt_usbh_root_hub_disconnect_handler(hcd, OTG_FS_PORT);
+    }
 
     return 0;
 }
 
-rt_uint8_t susb_sof (USB_OTG_CORE_HANDLE *pdev)
+rt_uint8_t usbh_sof (USB_OTG_CORE_HANDLE *pdev)
 {
+#if 0
     /* This callback could be used to implement a scheduler process */
     uint16_t i;
     static uint16_t sofcnt = 0;
@@ -423,390 +132,337 @@ rt_uint8_t susb_sof (USB_OTG_CORE_HANDLE *pdev)
             }
         }
     }
-
+#endif
     return 0;
 }
 
-void susb_urb_done (USB_OTG_CORE_HANDLE *pdev, uint32_t hc)
+void usbh_urb_done (USB_OTG_CORE_HANDLE *pdev, uint32_t hc)
 {
-    struct uhost_msg msg;
-    if (_xfer[hc].pipe != RT_NULL)
-    {
-        switch(_xfer[hc].pipe->ep.bmAttributes & USB_EP_ATTR_TYPE_MASK)
-        {
-        case USB_EP_ATTR_CONTROL:
-            return;
-        case USB_EP_ATTR_BULK:
-            return;
-        case USB_EP_ATTR_INT:
-            _xfer[hc].flag = 0;
-            break;
-        default:
-            return;
-        }
-        msg.content.cb.function = _xfer[hc].pipe->callback;
-        msg.content.cb.context = (void*)_xfer[hc].pipe;
-        msg.type = USB_MSG_CALLBACK;
-        rt_usb_post_event(&msg, sizeof(struct uhost_msg));
-    }
+    RT_DEBUG_LOG(RT_DEBUG_USB, ("urbdone\n"));
+    rt_completion_done(&urb_completion);
 }
+
 static USBH_HCD_INT_cb_TypeDef USBH_HCD_INT_cb =
 {
-    susb_sof,
-    susb_connect,
-    susb_disconnect,
-    susb_urb_done,
+    usbh_sof,
+    usbh_connect,
+    usbh_disconnect,
+    usbh_urb_done,
 };
+
 USBH_HCD_INT_cb_TypeDef  *USBH_HCD_INT_fops = &USBH_HCD_INT_cb;
 
-/**
- * This function will do control transfer in lowlevel, it will send request to the host controller
- *
- * @param uinst the usb device instance.
- * @param setup the buffer to save sending request packet.
- * @param buffer the data buffer to save requested data
- * @param nbytes the size of buffer
- *
- * @return the error code, RT_EOK on successfully.
- */
-static int susb_control_xfer(uinst_t uinst, ureq_t setup, void* buffer,
-                             int nbytes, int timeout)
+USBH_Status USBH_HC_SubmitRequest(USB_OTG_CORE_HANDLE *pdev,
+                                           uint8_t ch_num, 
+                                           uint8_t direction,
+                                           uint8_t ep_type,  
+                                           uint8_t token, 
+                                           uint8_t* pbuff, 
+                                           uint16_t length,
+                                           uint8_t do_ping) 
 {
-    rt_uint32_t speed;
+    pdev->host.hc[ch_num].ep_is_in = direction;
+    pdev->host.hc[ch_num].ep_type  = ep_type;
 
-    RT_ASSERT(uinst != RT_NULL);
-    RT_ASSERT(setup != RT_NULL);
-
-    if(!(root_hub.port_status[0] & PORT_CCS) ||
-            (root_hub.port_status[0] & PORT_CCSC)) return -1;
-
-    rt_sem_take(&sem_lock, RT_WAITING_FOREVER);
-
-    /* Save Global State */
-    USB_Host.gStateBkp = USB_Host.gState;
-
-    /* Prepare the Transactions */
-    USB_Host.gState = HOST_CTRL_XFER;
-    USB_Host.Control.buff = (rt_uint8_t*)buffer;
-    USB_Host.Control.length = nbytes;
-    USB_Host.Control.state = CTRL_SETUP;
-    speed = HCD_GetCurrentSpeed(&USB_OTG_Core);
-
-    rt_memcpy((void*)USB_Host.Control.setup.d8, (void*)setup, 8);
-
-    USBH_Modify_Channel (&USB_OTG_Core, USB_Host.Control.hc_num_out,
-                         uinst->address, speed, EP_TYPE_CTRL, uinst->max_packet_size);
-    USBH_Modify_Channel (&USB_OTG_Core, USB_Host.Control.hc_num_in,
-                         uinst->address, speed, EP_TYPE_CTRL, uinst->max_packet_size);
-
-    while(1)
+  if(token == 0)
+  {
+    pdev->host.hc[ch_num].data_pid = HC_PID_SETUP;
+  }
+  else
+  {
+    pdev->host.hc[ch_num].data_pid = HC_PID_DATA1;
+  }
+  
+  /* Manage Data Toggle */
+  switch(ep_type)
+  {
+  case EP_TYPE_CTRL:
+    if((token == 1) && (direction == 0)) /*send data */
     {
-        USBH_HandleControl(&USB_OTG_Core, &USB_Host);
-        if(USB_Host.Control.state == CTRL_COMPLETE) break;
+      if (length == 0)
+      { /* For Status OUT stage, Length==0, Status Out PID = 1 */
+        pdev->host.hc[ch_num].toggle_out = 1;
+      }
+      
+      /* Set the Data Toggle bit as per the Flag */
+      if (pdev->host.hc[ch_num].toggle_out == 0)
+      { /* Put the PID 0 */
+        pdev->host.hc[ch_num].data_pid = HC_PID_DATA0;    
+      }
+      else
+      { /* Put the PID 1 */
+        pdev->host.hc[ch_num].data_pid = HC_PID_DATA1;
+      }
+      if(pdev->host.URB_State[ch_num]  != URB_NOTREADY)
+      {
+        pdev->host.hc[ch_num].do_ping = do_ping;
+      }
     }
-
-    rt_sem_release(&sem_lock);
-
-    return nbytes;
-}
-
-/**
- * This function will do int transfer in lowlevel, it will send request to the host controller
- *
- * @param pipe the int transfer pipe.
- * @param buffer the data buffer to save requested data
- * @param nbytes the size of buffer
- *
- * @return the error code, RT_EOK on successfully.
- *
- */
-static int susb_int_xfer(upipe_t pipe, void* buffer, int nbytes, int timeout)
-{
-    rt_uint8_t hc;
-
-    RT_ASSERT(pipe != RT_NULL);
-    RT_ASSERT(buffer != RT_NULL);
-
-    if(!(root_hub.port_status[0] & PORT_CCS) ||
-            (root_hub.port_status[0] & PORT_CCSC)) return -1;
-
-    rt_sem_take(&sem_lock, RT_WAITING_FOREVER);
-    hc = (rt_uint32_t)pipe->user_data & 0xFF;
-    _xfer[hc].buffer = buffer;
-    _xfer[hc].size   = nbytes;
-    _xfer[hc].flag   = PXFER_FLAG_READY;
-    rt_sem_release(&sem_lock);
-
-    return 0;
-}
-
-/**
- * This function will do bulk transfer in lowlevel, it will send request to the host controller
- *
- * @param pipe the bulk transfer pipe.
- * @param buffer the data buffer to save requested data
- * @param nbytes the size of buffer
- *
- * @return the error code, RT_EOK on successfully.
- */
-static int susb_bulk_xfer(upipe_t pipe, void* buffer, int nbytes, int timeout)
-{
-    rt_uint8_t channel;
-    int left = nbytes;
-    rt_uint8_t *ptr;
-    URB_STATE state;
-
-    RT_ASSERT(pipe != RT_NULL);
-    RT_ASSERT(buffer != RT_NULL);
-
-    if(!(root_hub.port_status[0] & PORT_CCS) ||
-            (root_hub.port_status[0] & PORT_CCSC)) return -1;
-
-    ptr = (rt_uint8_t*)buffer;
-    channel = (rt_uint32_t)pipe->user_data & 0xFF;
-
-    rt_sem_take(&sem_lock, RT_WAITING_FOREVER);
-
-    if(pipe->ep.bEndpointAddress & USB_DIR_IN)
+    break;
+  
+  case EP_TYPE_BULK:
+    if(direction == 0)
     {
-        while(left > pipe->ep.wMaxPacketSize)
-        {
-            USBH_BulkReceiveData(&USB_OTG_Core, ptr, pipe->ep.wMaxPacketSize,
-                                 channel);
-            while(1)
-            {
-                state = HCD_GetURB_State(&USB_OTG_Core , channel);
-                if(state == URB_DONE) break;
-                else if(state == URB_NOTREADY) rt_kprintf("not ready\n");
-                else if(state == URB_STALL) rt_kprintf("stall\n");
-                //else if(state == URB_IDLE) rt_kprintf("idle\n");
-            }
-
-            ptr += pipe->ep.wMaxPacketSize;
-            left -= pipe->ep.wMaxPacketSize;
-        }
-
-        USBH_BulkReceiveData(&USB_OTG_Core, ptr, left, channel);
-        while(1)
-        {
-            state = HCD_GetURB_State(&USB_OTG_Core , channel);
-            if(state == URB_DONE) break;
-            else if(state == URB_NOTREADY) rt_kprintf("not ready\n");
-            else if(state == URB_STALL) rt_kprintf("stall\n");
-            //else if(state == URB_IDLE) rt_kprintf("idle\n");
-        }
+      /* Set the Data Toggle bit as per the Flag */
+      if ( pdev->host.hc[ch_num].toggle_out == 0)
+      { /* Put the PID 0 */
+        pdev->host.hc[ch_num].data_pid = HC_PID_DATA0;    
+      }
+      else
+      { /* Put the PID 1 */
+        pdev->host.hc[ch_num].data_pid = HC_PID_DATA1;
+      }
+      if(pdev->host.URB_State[ch_num]  != URB_NOTREADY)
+      {
+        pdev->host.hc[ch_num].do_ping = do_ping;
+      }
     }
     else
     {
-send_data:
-        while(left > pipe->ep.wMaxPacketSize)
-        {
-            USBH_BulkSendData(&USB_OTG_Core, ptr, pipe->ep.wMaxPacketSize,
-                              channel);
-
-            while(1)
-            {
-                state = HCD_GetURB_State(&USB_OTG_Core, channel);
-                if(state == URB_DONE) break;
-                if(state == URB_NOTREADY) goto send_data;
-            }
-
-            ptr += pipe->ep.wMaxPacketSize;
-            left -= pipe->ep.wMaxPacketSize;
-        }
-
-        USBH_BulkSendData(&USB_OTG_Core, ptr, left, channel);
-        while(1)
-        {
-            state = HCD_GetURB_State(&USB_OTG_Core , channel);
-            if(state == URB_DONE) break;
-            if(state == URB_NOTREADY) goto send_data;
-        }
+      if( pdev->host.hc[ch_num].toggle_in == 0)
+      {
+        pdev->host.hc[ch_num].data_pid = HC_PID_DATA0;
+      }
+      else
+      {
+        pdev->host.hc[ch_num].data_pid = HC_PID_DATA1;
+      }
     }
-
-    rt_sem_release(&sem_lock);
-    return nbytes;
-}
-
-/**
- * This function will do isochronous transfer in lowlevel, it will send request to the host controller
- *
- * @param pipe the isochronous transfer pipe.
- * @param buffer the data buffer to save requested data
- * @param nbytes the size of buffer
- *
- * @return the error code, RT_EOK on successfully.
- *
- * @note unimplement yet
- */
-static int susb_iso_xfer(upipe_t pipe, void* buffer, int nbytes, int timeout)
-{
-    /* no implement */
-    RT_ASSERT(0);
-
-    return 0;
-}
-
-/**
- * This function will allocate a pipe for specified endpoint, it will be used to do transfer.
- *
- * @param pipe the pointer of pipe handle to be allocated.
- * @param ifinst the usb interface instance.
- * @param ep the endpoint descriptor.
- * @param func_callback callback function to be registed
- *
- * @return the error code, RT_EOK on successfully.
- */
-static rt_err_t susb_alloc_pipe(upipe_t* pipe, uifinst_t ifinst, uep_desc_t ep,
-                                func_callback callback)
-{
-    rt_uint32_t channel, speed;
-    rt_uint8_t ep_type;
-    upipe_t p;
-
-    RT_ASSERT(ep != RT_NULL);
-
-    p = (upipe_t)rt_malloc(sizeof(struct upipe));
-    p->ifinst = ifinst;
-    p->callback = callback;
-    p->status = UPIPE_STATUS_OK;
-    rt_memcpy(&p->ep, ep, ep->bLength);
-
-    speed = HCD_GetCurrentSpeed(&USB_OTG_Core);
-    channel = USBH_Alloc_Channel(&USB_OTG_Core, p->ep.bEndpointAddress);
-
-    if((ep->bmAttributes & USB_EP_ATTR_TYPE_MASK) == USB_EP_ATTR_BULK)
-        ep_type = EP_TYPE_BULK;
-    else if((ep->bmAttributes & USB_EP_ATTR_TYPE_MASK) == USB_EP_ATTR_INT)
-        ep_type = EP_TYPE_INTR;
-    else rt_kprintf("unsupported endpoint type\n");
-
-    /* Open the new channels */
-    USBH_Open_Channel(&USB_OTG_Core, channel, ifinst->uinst->address,
-                      speed, ep_type, p->ep.wMaxPacketSize);
-
-    RT_DEBUG_LOG(1, ("susb_alloc_pipe : %d, chanel %d, max packet size %d\n",
-                     p->ep.bEndpointAddress, channel, p->ep.wMaxPacketSize));
-
-    p->user_data = (void*)channel;
-    *pipe = p;
-    _xfer[channel].pipe = p;
-
-    return RT_EOK;
-}
-
-/**
- * This function will free a pipe, it will release all resouces of the pipe.
- *
- * @param pipe the pipe handler to be free.
- *
- * @return the error code, RT_EOK on successfully.
- */
-static rt_err_t susb_free_pipe(upipe_t pipe)
-{
-    rt_uint8_t channel;
-
-    RT_ASSERT(pipe != RT_NULL);
-
-    RT_DEBUG_LOG(RT_DEBUG_USB, ("susb_free_pipe:%d\n",
-                                pipe->ep.bEndpointAddress));
-
-    channel = (rt_uint32_t)pipe->user_data & 0xFF;
-    USBH_Free_Channel(&USB_OTG_Core, channel);
-
-    rt_memset(&_xfer[channel], 0, sizeof(struct usbh_xfer));
-    rt_free(pipe);
-
-    return RT_EOK;
-}
-
-/**
- * This function will control the roothub of susb host controller.
- *
- * @param port the port to be reset.
- *
- * @return the error code, RT_EOK on successfully.
- */
-static rt_err_t susb_hub_control(rt_uint16_t port, rt_uint8_t cmd, void* args)
-{
-    RT_ASSERT(port == 1);
-
-    switch(cmd)
+    
+    break;
+  case EP_TYPE_INTR:
+    if(direction == 0)
     {
-    case RH_GET_PORT_STATUS:
-        *(rt_uint32_t*)args = root_hub.port_status[port - 1];
-        break;
-    case RH_SET_PORT_STATUS:
-        break;
-    case RH_CLEAR_PORT_FEATURE:
-        switch((rt_uint32_t)args & 0xFF)
-        {
-        case PORT_FEAT_C_RESET:
-            root_hub.port_status[port - 1] &= ~PORT_PRSC;
-            ignore_disconnect = RT_FALSE;
-            break;
-        case PORT_FEAT_C_CONNECTION:
-            root_hub.port_status[port - 1] &= ~PORT_CCSC;
-            break;
-        case PORT_FEAT_C_ENABLE:
-            root_hub.port_status[port - 1] &= ~PORT_PESC;
-            break;
-        default:
-            break;
-        }
-        break;
-    case RH_SET_PORT_FEATURE:
-        switch((rt_uint32_t)args & 0xFF)
-        {
-        case PORT_FEAT_POWER:
-            root_hub.port_status[port - 1] |= PORT_PPS;
-            break;
-        case PORT_FEAT_RESET:
-            ignore_disconnect = RT_TRUE;
-            root_hub.port_status[port - 1] |= PORT_PRS;
-            USB_OTG_ResetPort(&USB_OTG_Core);
-            root_hub.port_status[port - 1] &= ~PORT_PRS;
-            break;
-        case PORT_FEAT_ENABLE:
-            root_hub.port_status[port - 1] |= PORT_PES;
-            break;
-        }
-        break;
-    default:
-        break;
+      /* Set the Data Toggle bit as per the Flag */
+      if ( pdev->host.hc[ch_num].toggle_out == 0)
+      { /* Put the PID 0 */
+        pdev->host.hc[ch_num].data_pid = HC_PID_DATA0;    
+      }
+      else
+      { /* Put the PID 1 */
+        pdev->host.hc[ch_num].data_pid = HC_PID_DATA1;
+      }
     }
+    else
+    {
+      if( pdev->host.hc[ch_num].toggle_in == 0)
+      {
+        pdev->host.hc[ch_num].data_pid = HC_PID_DATA0;
+      }
+      else
+      {
+        pdev->host.hc[ch_num].data_pid = HC_PID_DATA1;
+      }
+    }
+    break;
+    
+  case EP_TYPE_ISOC: 
+    pdev->host.hc[ch_num].data_pid = HC_PID_DATA0;
+    break;  
+  }
+  
+  pdev->host.hc[ch_num].xfer_buff = pbuff;
+  pdev->host.hc[ch_num].xfer_len  = length;
+  pdev->host.URB_State[ch_num] = URB_IDLE;  
+  pdev->host.hc[ch_num].xfer_count = 0;
+  pdev->host.channel[ch_num] = ch_num;
+  pdev->host.HC_Status[ch_num] = HC_IDLE;
+  
+  return HCD_SubmitRequest (pdev , ch_num);
+}
 
+/**
+  * @brief  Return the Host Channel state.
+  * @param  hhcd HCD handle
+  * @param  chnum Channel number.
+  *         This parameter can be a value from 1 to 15
+  * @retval Host channel state
+  *          This parameter can be one of these values:
+  *            HC_IDLE/
+  *            HC_XFRC/
+  *            HC_HALTED/
+  *            HC_NYET/ 
+  *            HC_NAK/  
+  *            HC_STALL/ 
+  *            HC_XACTERR/  
+  *            HC_BBLERR/  
+  *            HC_DATATGLERR    
+  */
+HC_STATUS  USBH_HC_GetState(USB_OTG_CORE_HANDLE *pdev, uint8_t chnum)
+{
+  return pdev->host.HC_Status[chnum];
+}
+
+uint32_t USBH_HC_Init(USB_OTG_CORE_HANDLE *pdev,  
+                                  uint8_t ch_num,
+                                  uint8_t epnum,
+                                  uint8_t dev_address,
+                                  uint8_t speed,
+                                  uint8_t ep_type,
+                                  uint16_t mps)
+{
+  uint32_t status = 0;
+
+  pdev->host.hc[ch_num].dev_addr = dev_address;
+  pdev->host.hc[ch_num].max_packet = mps;
+  pdev->host.channel[ch_num] = ch_num;
+  pdev->host.hc[ch_num].ep_type = ep_type;
+  pdev->host.hc[ch_num].ep_num = epnum & 0x7F;
+  pdev->host.hc[ch_num].ep_is_in = ((epnum & 0x80) == 0x80);
+  pdev->host.hc[ch_num].speed = speed;
+
+  status =  HCD_HC_Init (pdev , ch_num);
+
+  return status;
+}
+
+static rt_err_t drv_reset_port(rt_uint8_t port)
+{
+    RT_DEBUG_LOG(RT_DEBUG_USB, ("reset port\n"));
+    HCD_ResetPort(&USB_OTG_Core);
     return RT_EOK;
 }
 
-static struct uhcd_ops susb_ops =
+static int drv_pipe_xfer(upipe_t pipe, rt_uint8_t token, void *buffer, int nbytes, int timeout)
 {
-    susb_control_xfer,
-    susb_bulk_xfer,
-    susb_int_xfer,
-    susb_iso_xfer,
-    susb_alloc_pipe,
-    susb_free_pipe,
-    susb_hub_control,
+    while (1)
+    {
+        if (!connect_status)
+        {
+            return -1;
+        }
+        rt_completion_init(&urb_completion);
+        USBH_HC_SubmitRequest(&USB_OTG_Core,
+                                 pipe->pipe_index,
+                                 (pipe->ep.bEndpointAddress & 0x80) >> 7,
+                                 pipe->ep.bmAttributes,
+                                 token,
+                                 buffer,
+                                 nbytes,
+                                 0);
+        rt_completion_wait(&urb_completion, timeout);
+        if (HCD_GetHCState(&USB_OTG_Core, pipe->pipe_index) == HC_NAK)
+        {
+            RT_DEBUG_LOG(RT_DEBUG_USB, ("nak\n"));
+            if (pipe->ep.bmAttributes == USB_EP_ATTR_INT)
+            {
+                rt_thread_delay((pipe->ep.bInterval * RT_TICK_PER_SECOND / 1000) > 0 ? (pipe->ep.bInterval * RT_TICK_PER_SECOND / 1000) : 1);
+            }
+            USB_OTG_HC_Halt(&USB_OTG_Core, pipe->pipe_index);
+            USBH_HC_Init(&USB_OTG_Core,
+                            pipe->pipe_index,
+                            pipe->ep.bEndpointAddress,
+                            pipe->inst->address,
+                            USB_OTG_SPEED_FULL,
+                            pipe->ep.bmAttributes,
+                            pipe->ep.wMaxPacketSize);
+            continue;
+        }
+        else if (HCD_GetHCState(&USB_OTG_Core, pipe->pipe_index) == HC_STALL)
+        {
+            RT_DEBUG_LOG(RT_DEBUG_USB, ("stall\n"));
+            pipe->status = UPIPE_STATUS_STALL;
+            if (pipe->callback != RT_NULL)
+            {
+                pipe->callback(pipe);
+            }
+            return -1;
+        }
+        else if (HCD_GetHCState(&USB_OTG_Core, pipe->pipe_index) == URB_ERROR)
+        {
+            RT_DEBUG_LOG(RT_DEBUG_USB, ("error\n"));
+            pipe->status = UPIPE_STATUS_ERROR;
+            if (pipe->callback != RT_NULL)
+            {
+                pipe->callback(pipe);
+            }
+            return -1;
+        }
+        else if (HCD_GetURB_State(&USB_OTG_Core, pipe->pipe_index) != URB_NOTREADY &&
+                 HCD_GetURB_State(&USB_OTG_Core, pipe->pipe_index) != URB_ERROR) //URB_NYET
+        {
+            RT_DEBUG_LOG(RT_DEBUG_USB, ("ok\n"));
+            pipe->status = UPIPE_STATUS_OK;
+            if (pipe->callback != RT_NULL)
+            {
+                pipe->callback(pipe);
+            }
+            if (pipe->ep.bEndpointAddress & 0x80) {
+                return HCD_GetXferCnt(&USB_OTG_Core, pipe->pipe_index);
+            } 
+            return nbytes;
+        }
+        return -1;
+    }
+}
+
+static rt_uint16_t pipe_index = 0;
+static rt_uint8_t  drv_get_free_pipe_index()
+{
+    rt_uint8_t idx;
+    for (idx = 1; idx < 16; idx++)
+    {
+        if (!(pipe_index & (0x01 << idx)))
+        {
+            pipe_index |= (0x01 << idx);
+            return idx;
+        }
+    }
+    return 0xff;
+}
+
+static void drv_free_pipe_index(rt_uint8_t index)
+{
+    pipe_index &= ~(0x01 << index);
+}
+
+static rt_err_t drv_open_pipe(upipe_t pipe)
+{
+    pipe->pipe_index = drv_get_free_pipe_index();
+    USBH_HC_Init(&USB_OTG_Core,
+                    pipe->pipe_index,
+                    pipe->ep.bEndpointAddress,
+                    pipe->inst->address,
+                    USB_OTG_SPEED_FULL,
+                    pipe->ep.bmAttributes,
+                    pipe->ep.wMaxPacketSize);
+    /* Set DATA0 PID token*/
+    if (USB_OTG_Core.host.hc[pipe->pipe_index].ep_is_in)
+    {
+        USB_OTG_Core.host.hc[pipe->pipe_index].toggle_in = 0;
+    }
+    else
+    {
+        USB_OTG_Core.host.hc[pipe->pipe_index].toggle_out = 0;
+    }
+    return RT_EOK;
+}
+
+static rt_err_t drv_close_pipe(upipe_t pipe)
+{
+    USB_OTG_HC_Halt(&USB_OTG_Core, pipe->pipe_index);
+    drv_free_pipe_index(pipe->pipe_index);
+    return RT_EOK;
+}
+
+struct uhcd_ops _uhcd_ops =
+{
+    drv_reset_port,
+    drv_pipe_xfer,
+    drv_open_pipe,
+    drv_close_pipe,
 };
 
+
 /**
- * This function will initialize susb host controller device.
+ * This function will initialize usbh host controller device.
  *
  * @param dev the host controller device to be initalize.
  *
  * @return the error code, RT_EOK on successfully.
  */
-static rt_err_t susb_init(rt_device_t dev)
+static rt_err_t usbh_init(rt_device_t dev)
 {
-    rt_sem_init(&sem_lock, "s_lock", 1, RT_IPC_FLAG_FIFO);
-
-    /* roothub initilizition */
-    root_hub.num_ports = 1;
-    root_hub.is_roothub = RT_TRUE;
-    root_hub.self = RT_NULL;
-    root_hub.hcd = &susb_hcd;
-
     /* Hardware Init */
     USB_OTG_BSP_Init(&USB_OTG_Core);
 
@@ -828,19 +484,23 @@ static rt_err_t susb_init(rt_device_t dev)
 }
 
 /**
- * This function will define the susb host controller device, it will be register to the device
+ * This function will define the usbh host controller device, it will be register to the device
  * system.
  *
  * @return the error code, RT_EOK on successfully.
  */
-void rt_hw_susb_init(void)
+void rt_hw_usbh_init(void)
 {
-    susb_hcd.parent.type = RT_Device_Class_USBHost;
-    susb_hcd.parent.init = susb_init;
+    stm32_hcd.parent.type = RT_Device_Class_USBHost;
+    stm32_hcd.parent.init = usbh_init;
+    stm32_hcd.parent.user_data = &USB_OTG_Core;
+    stm32_hcd.ops = &_uhcd_ops;
 
-    susb_hcd.ops = &susb_ops;
+    stm32_hcd.num_ports = 1;
 
-    rt_device_register(&susb_hcd.parent, "susb", 0);
+    rt_device_register(&stm32_hcd.parent, "usbh", 0);
+    rt_usb_host_init();
 }
 
-#endif
+INIT_DEVICE_EXPORT(rt_hw_usbh_init);
+

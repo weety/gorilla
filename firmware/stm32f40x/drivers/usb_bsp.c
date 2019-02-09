@@ -59,9 +59,9 @@
  #define HOST_POWERSW_VBUS                 GPIO_Pin_9
 #else
  #ifdef USE_USB_OTG_FS
-  #define HOST_POWERSW_PORT_RCC            RCC_AHB1Periph_GPIOA
-  #define HOST_POWERSW_PORT                GPIOA
-  #define HOST_POWERSW_VBUS                GPIO_Pin_9
+  #define HOST_POWERSW_PORT_RCC            RCC_AHB1Periph_GPIOC
+  #define HOST_POWERSW_PORT                GPIOC
+  #define HOST_POWERSW_VBUS                GPIO_Pin_0
  #endif
 #endif
 
@@ -361,7 +361,7 @@ void  USB_OTG_BSP_ConfigVBUS(USB_OTG_CORE_HANDLE *pdev)
   GPIO_Init(HOST_POWERSW_PORT, &GPIO_InitStructure);
 #else
   #ifdef USE_USB_OTG_FS
-  RCC_AHB1PeriphClockCmd( RCC_AHB1Periph_GPIOH , ENABLE);
+  RCC_AHB1PeriphClockCmd( HOST_POWERSW_PORT_RCC , ENABLE);
 
   GPIO_InitStructure.GPIO_Pin = HOST_POWERSW_VBUS;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
