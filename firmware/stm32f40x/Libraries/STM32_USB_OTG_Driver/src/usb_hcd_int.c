@@ -560,6 +560,7 @@ uint32_t USB_OTG_USBH_handle_hc_n_Out_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t 
     else if(pdev->host.HC_Status[num] == HC_NAK)
     {
       pdev->host.URB_State[num] = URB_NOTREADY;      
+      USBH_HCD_INT_fops->UrbNak(pdev, num);
     }    
     else if(pdev->host.HC_Status[num] == HC_NYET)
     {

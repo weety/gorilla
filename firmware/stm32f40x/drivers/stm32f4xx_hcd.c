@@ -11,6 +11,7 @@
  * Date           Author       Notes
  * 2012-05-16     Yi Qiu       first version
  * 2012-12-05     heyuanjie87  add interrupt transfer
+ * 2019-01-28     weety        Support new usb stack
  */
 
 #include <rtthread.h>
@@ -75,6 +76,7 @@ rt_uint8_t usbh_connect (USB_OTG_CORE_HANDLE *pdev)
     rt_kprintf("usbh_connect\n");
 
     uhcd_t hcd = &stm32_hcd;
+    pdev->host.ConnSts = 1;
     if (!connect_status)
     {
         connect_status = RT_TRUE;
@@ -95,6 +97,7 @@ rt_uint8_t usbh_disconnect (USB_OTG_CORE_HANDLE *pdev)
 {
     rt_kprintf("usbh_disconnect\n");
     uhcd_t hcd = &stm32_hcd;
+    pdev->host.ConnSts = 0;
     if (connect_status)
     {
         connect_status = RT_FALSE;
@@ -142,12 +145,21 @@ void usbh_urb_done (USB_OTG_CORE_HANDLE *pdev, uint32_t hc)
     rt_completion_done(&urb_completion);
 }
 
+void usbh_urb_nak (USB_OTG_CORE_HANDLE *pdev, uint8_t hc)
+{
+    if (pdev->host.hc[hc].ep_type == EP_TYPE_BULK && !pdev->host.hc[hc].ep_is_in)
+    {
+        rt_completion_done(&urb_completion);
+    }
+}
+
 static USBH_HCD_INT_cb_TypeDef USBH_HCD_INT_cb =
 {
     usbh_sof,
     usbh_connect,
     usbh_disconnect,
     usbh_urb_done,
+    usbh_urb_nak,
 };
 
 USBH_HCD_INT_cb_TypeDef  *USBH_HCD_INT_fops = &USBH_HCD_INT_cb;
@@ -325,6 +337,9 @@ static rt_err_t drv_reset_port(rt_uint8_t port)
 
 static int drv_pipe_xfer(upipe_t pipe, rt_uint8_t token, void *buffer, int nbytes, int timeout)
 {
+    rt_err_t ret;
+    HC_STATUS hc_stat;
+    URB_STATE urb_stat;
     while (1)
     {
         if (!connect_status)
@@ -340,27 +355,37 @@ static int drv_pipe_xfer(upipe_t pipe, rt_uint8_t token, void *buffer, int nbyte
                                  buffer,
                                  nbytes,
                                  0);
-        rt_completion_wait(&urb_completion, timeout);
-        if (HCD_GetHCState(&USB_OTG_Core, pipe->pipe_index) == HC_NAK)
+        ret = rt_completion_wait(&urb_completion, timeout);
+        if (ret < 0)
+        {
+            rt_kprintf("urb %s timeout\n", 
+                (pipe->ep.bEndpointAddress & 0x80)? "in" : "out");
+        }
+
+        hc_stat = HCD_GetHCState(&USB_OTG_Core, pipe->pipe_index);
+        urb_stat = HCD_GetURB_State(&USB_OTG_Core, pipe->pipe_index);
+        if (hc_stat == HC_NAK)
         {
             RT_DEBUG_LOG(RT_DEBUG_USB, ("nak\n"));
+            //rt_kprintf("nak\n");
             if (pipe->ep.bmAttributes == USB_EP_ATTR_INT)
             {
                 rt_thread_delay((pipe->ep.bInterval * RT_TICK_PER_SECOND / 1000) > 0 ? (pipe->ep.bInterval * RT_TICK_PER_SECOND / 1000) : 1);
             }
-            USB_OTG_HC_Halt(&USB_OTG_Core, pipe->pipe_index);
+            /*USB_OTG_HC_Halt(&USB_OTG_Core, pipe->pipe_index);
             USBH_HC_Init(&USB_OTG_Core,
                             pipe->pipe_index,
                             pipe->ep.bEndpointAddress,
                             pipe->inst->address,
                             USB_OTG_SPEED_FULL,
                             pipe->ep.bmAttributes,
-                            pipe->ep.wMaxPacketSize);
+                            pipe->ep.wMaxPacketSize);*/
             continue;
         }
-        else if (HCD_GetHCState(&USB_OTG_Core, pipe->pipe_index) == HC_STALL)
+        else if (hc_stat == HC_STALL)
         {
             RT_DEBUG_LOG(RT_DEBUG_USB, ("stall\n"));
+            rt_kprintf("stall\n");
             pipe->status = UPIPE_STATUS_STALL;
             if (pipe->callback != RT_NULL)
             {
@@ -368,9 +393,12 @@ static int drv_pipe_xfer(upipe_t pipe, rt_uint8_t token, void *buffer, int nbyte
             }
             return -1;
         }
-        else if (HCD_GetHCState(&USB_OTG_Core, pipe->pipe_index) == URB_ERROR)
+        else if (hc_stat == HC_XACTERR || 
+                 hc_stat == HC_BBLERR || 
+                 hc_stat == HC_DATATGLERR)
         {
             RT_DEBUG_LOG(RT_DEBUG_USB, ("error\n"));
+            rt_kprintf("error\n");
             pipe->status = UPIPE_STATUS_ERROR;
             if (pipe->callback != RT_NULL)
             {
@@ -378,8 +406,7 @@ static int drv_pipe_xfer(upipe_t pipe, rt_uint8_t token, void *buffer, int nbyte
             }
             return -1;
         }
-        else if (HCD_GetURB_State(&USB_OTG_Core, pipe->pipe_index) != URB_NOTREADY &&
-                 HCD_GetURB_State(&USB_OTG_Core, pipe->pipe_index) != URB_ERROR) //URB_NYET
+        else if (urb_stat == URB_DONE) //URB_NOTREADY URB_ERROR URB_NYET
         {
             RT_DEBUG_LOG(RT_DEBUG_USB, ("ok\n"));
             pipe->status = UPIPE_STATUS_OK;
@@ -391,6 +418,10 @@ static int drv_pipe_xfer(upipe_t pipe, rt_uint8_t token, void *buffer, int nbyte
                 return HCD_GetXferCnt(&USB_OTG_Core, pipe->pipe_index);
             } 
             return nbytes;
+        }
+        else
+        {
+            rt_kprintf("URB xfer err, hc_stat=%d, urb_stat=%d\n", hc_stat, urb_stat);
         }
         return -1;
     }
