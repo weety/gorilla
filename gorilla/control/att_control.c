@@ -60,7 +60,25 @@ void speed_control(void)
 		att_control.position = -speed_ctrl_limit;
 	}
 
-	att_control.pwm_out += (speed_kp * att_control.speed + speed_ki * att_control.position);
+	att_control.speed_ctrl_out = (speed_kp * att_control.speed + speed_ki * att_control.position);
+}
+
+void speed_control_out(void)
+{
+	int speed_sample_interval;
+
+	param_get_by_idx(SPEED_SAMPLE_INTERVAL, &speed_sample_interval);
+
+	if (att_control.speed_ctrl_period == 0) {
+		speed_control();
+	}
+
+	att_control.pwm_out += att_control.speed_ctrl_out * (att_control.speed_ctrl_period + 1) / (speed_sample_interval + 1);
+
+	att_control.speed_ctrl_period++;
+	if (att_control.speed_ctrl_period > speed_sample_interval) {
+		att_control.speed_ctrl_period = 0;
+	}
 }
 
 void direction_control(void)
@@ -122,7 +140,7 @@ int att_control_main(void)
 {
 	int ret;
 	angle_control();
-	speed_control();
+	speed_control_out();
 	direction_control();
 	ret = moto_control();
 

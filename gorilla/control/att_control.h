@@ -22,6 +22,8 @@ typedef struct {
 	float pwm_r_out;
 	float position;
 	float speed;
+	float speed_ctrl_out;
+	int   speed_ctrl_period;
 	bool lost_control_flag;
 } att_control_t;
 
