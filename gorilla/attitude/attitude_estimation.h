@@ -20,6 +20,7 @@ typedef struct {
 #define ATT_OBJ_INIT(_name) {#_name, NULL}
 
 typedef struct {
+	float angle_acc;
 	float angle;
 	float speed;
 } att_angle_t;

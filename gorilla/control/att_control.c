@@ -17,6 +17,8 @@
 extern sensor_t sensor_qenc;
 extern att_t att_angle;
 
+ctrl_t ctrl_param = CTRL_OBJ_INIT(ctrl_param);
+
 att_control_t att_control;
 
 void angle_control(void)
@@ -93,6 +95,7 @@ int moto_control(void)
 	float l_speed, r_speed;
 	float moto_l_pwm_bd = 0.0f;
 	float moto_r_pwm_bd = 0.0f;
+	ctrl_param_t param;
 
 	if (att_control.lost_control_flag) {
 		moto_left_stop();
@@ -133,6 +136,10 @@ int moto_control(void)
 	moto_left_run(l_dir, l_speed);
 	moto_right_run(r_dir, r_speed);
 
+	param.pwm_l_out = l_speed;
+	param.pwm_r_out = r_speed;
+	mpdc_push_data(ctrl_param.mpdc, &param);
+
 	return 0;
 }
 
@@ -150,6 +157,9 @@ int att_control_main(void)
 int att_control_init(void)
 {
 	int ret;
+
+	ctrl_param.mpdc = mpdc_advertise(ctrl_param.name, sizeof(ctrl_param_t));
+	mpdc_subscribe(ctrl_param.name, sizeof(ctrl_param_t));
 
 	ret = moto_init();
 	if (ret)

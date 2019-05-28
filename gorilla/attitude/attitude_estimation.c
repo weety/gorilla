@@ -39,13 +39,6 @@ void angle_estimation(float dt)
 	if (isnan(Angle_ay)) {
 		printf("detect angle is nan[%f]\n", acc.y);
 	}
-	//Angle_ax = (Accel_x-570) /16570;   //去除零点偏移,计算得到角度（弧度）
-	//Angle_ax = Angle_ax*1.1*180/3.14;     //弧度转换为度,
-
-
-	//-------角速度-------------------------
-
-	//范围为2000deg/s时，换算关系：16.4 LSB/(deg/s)
 
 	mpdc_pull_data(sensor_gyr.mpdc, &gyr);
 	Gyro_x = gyr.x;
@@ -55,6 +48,7 @@ void angle_estimation(float dt)
 
 	kalman_filter(Angle_ay, Gyro_x, dt);       //卡尔曼滤波计算倾角
 
+	angle.angle_acc = Angle_ay;
 	angle.angle = Angle;
 	angle.speed = Gyro_x;
 	mpdc_push_data(att_angle.mpdc, &angle);

@@ -11,8 +11,22 @@
 
 #include <stdbool.h>
 #include "global.h"
+#include "mpdc.h"
 
 #define LOST_CONTROL_ANGLE deg_to_rad(30)
+
+typedef struct {
+	const char *name;
+	mpdc_t *mpdc;
+} ctrl_t;
+
+#define CTRL_OBJ_INIT(_name) {#_name, NULL}
+
+typedef struct {
+	float pwm_l_out;
+	float pwm_r_out;
+} ctrl_param_t;
+
 
 typedef struct {
 	float target_speed;
