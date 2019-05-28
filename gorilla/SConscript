@@ -15,11 +15,12 @@ filter/kalman.c
 filter/filter.c
 attitude/attitude_estimation.c
 control/att_control.c
+wireless_ctrl/waveview.c
 ''')
 
 CPPPATH = [cwd + '/common', cwd + '/sensor', cwd + '/moto', cwd + '/mpdc', cwd + '/twowheel']
 CPPPATH += [cwd + '/math', cwd + '/filter', cwd + '/attitude']
-CPPPATH += [cwd + '/control']
+CPPPATH += [cwd + '/control', cwd + '/wireless_ctrl']
 
 group = DefineGroup('Gorilla', src, depend = [''], CPPPATH = CPPPATH)
 
