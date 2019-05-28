@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
-#include "ringbuffer.h"
+#include "ring_buffer.h"
 
 uint32_t ringbuffer_get_size(struct ringbuffer *rb)
 {

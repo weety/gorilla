@@ -2,7 +2,7 @@ from building import *
 
 cwd  = GetCurrentDir()
 src = Split('''
-common/ringbuffer.c
+common/ring_buffer.c
 sensor/sensor.c
 sensor/calibration.c
 moto/pwm.c
