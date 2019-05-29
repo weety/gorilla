@@ -16,6 +16,8 @@ filter/filter.c
 attitude/attitude_estimation.c
 control/att_control.c
 wireless_ctrl/waveview.c
+wireless_ctrl/rc.c
+wireless_ctrl/sbus.c
 ''')
 
 CPPPATH = [cwd + '/common', cwd + '/sensor', cwd + '/moto', cwd + '/mpdc', cwd + '/twowheel']
