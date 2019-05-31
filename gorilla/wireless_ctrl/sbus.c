@@ -127,42 +127,26 @@ void sbus2_output(uint16_t *values, uint16_t num_values)
 	sbus1_output(values, num_values);
 }
 
-
-/*
- * S.bus decoder matrix.
+/* S.bus decode macro.
  *
- * Each channel value can come from up to 3 input bytes. Each row in the
- * matrix describes up to three bytes, and each entry gives:
- *
- * - byte offset in the data portion of the frame
- * - right shift applied to the data byte
- * - mask for the data byte
- * - left shift applied to the result into the channel value
+ * -data : input sequence, uint8_t* type
+ * -start: The starting bit in the input sequence
+ * - size: Total bits for result
  */
-struct sbus_bit_pick {
-	uint8_t byte;
-	uint8_t rshift;
-	uint8_t mask;
-	uint8_t lshift;
-};
-static const struct sbus_bit_pick sbus_decoder[SBUS_INPUT_CHANNELS][3] = {
-	/*  0 */ { { 0, 0, 0xff, 0}, { 1, 0, 0x07, 8}, { 0, 0, 0x00,  0} },
-	/*  1 */ { { 1, 3, 0x1f, 0}, { 2, 0, 0x3f, 5}, { 0, 0, 0x00,  0} },
-	/*  2 */ { { 2, 6, 0x03, 0}, { 3, 0, 0xff, 2}, { 4, 0, 0x01, 10} },
-	/*  3 */ { { 4, 1, 0x7f, 0}, { 5, 0, 0x0f, 7}, { 0, 0, 0x00,  0} },
-	/*  4 */ { { 5, 4, 0x0f, 0}, { 6, 0, 0x7f, 4}, { 0, 0, 0x00,  0} },
-	/*  5 */ { { 6, 7, 0x01, 0}, { 7, 0, 0xff, 1}, { 8, 0, 0x03,  9} },
-	/*  6 */ { { 8, 2, 0x3f, 0}, { 9, 0, 0x1f, 6}, { 0, 0, 0x00,  0} },
-	/*  7 */ { { 9, 5, 0x07, 0}, {10, 0, 0xff, 3}, { 0, 0, 0x00,  0} },
-	/*  8 */ { {11, 0, 0xff, 0}, {12, 0, 0x07, 8}, { 0, 0, 0x00,  0} },
-	/*  9 */ { {12, 3, 0x1f, 0}, {13, 0, 0x3f, 5}, { 0, 0, 0x00,  0} },
-	/* 10 */ { {13, 6, 0x03, 0}, {14, 0, 0xff, 2}, {15, 0, 0x01, 10} },
-	/* 11 */ { {15, 1, 0x7f, 0}, {16, 0, 0x0f, 7}, { 0, 0, 0x00,  0} },
-	/* 12 */ { {16, 4, 0x0f, 0}, {17, 0, 0x7f, 4}, { 0, 0, 0x00,  0} },
-	/* 13 */ { {17, 7, 0x01, 0}, {18, 0, 0xff, 1}, {19, 0, 0x03,  9} },
-	/* 14 */ { {19, 2, 0x3f, 0}, {20, 0, 0x1f, 6}, { 0, 0, 0x00,  0} },
-	/* 15 */ { {20, 5, 0x07, 0}, {21, 0, 0xff, 3}, { 0, 0, 0x00,  0} }
-};
+#define DECODE_BITS(data, start, size)       \
+	({                                       \
+		const int16_t __size = (size);       \
+		const uint16_t __mask = (__size < 16 ? 1 << __size : 0) - 1;  \
+		const int16_t __off = (start) / 8;   \
+		const int16_t __shft = (start) & 7;  \
+		uint16_t __res;                      \
+		\
+		__res = (uint16_t)(data)[__off] >> __shft;  \
+		if (__size + __shft > 8)                    \
+			__res |= (uint16_t)(data)[__off+1] << ((8 - __shft) % 8);  \
+		__res & __mask;  \
+	})
+
 
 bool sbus_decode(uint64_t frame_time, uint8_t *frame, uint16_t *values, uint16_t *num_values,
 	    bool *sbus_failsafe, bool *sbus_frame_drop, uint16_t max_values)
@@ -228,19 +212,7 @@ bool sbus_decode(uint64_t frame_time, uint8_t *frame, uint16_t *values, uint16_t
 	for (unsigned channel = 0; channel < chancount; channel++) {
 		unsigned value = 0;
 
-		for (unsigned pick = 0; pick < 3; pick++) {
-			const struct sbus_bit_pick *decode = &sbus_decoder[channel][pick];
-
-			if (decode->mask != 0) {
-				unsigned piece = frame[1 + decode->byte];
-				piece >>= decode->rshift;
-				piece &= decode->mask;
-				piece <<= decode->lshift;
-
-				value |= piece;
-			}
-		}
-
+		value = DECODE_BITS(&frame[1], channel*11, 11);
 
 		/* convert 0-2048 values to 1000-2000 ppm encoding in a not too sloppy fashion */
 		values[channel] = (uint16_t)(value * SBUS_SCALE_FACTOR + .5f) + SBUS_SCALE_OFFSET;
@@ -600,10 +572,11 @@ int sbus_init(void)
 		rt_kprintf("open device %s failed\n", SBUS_DEVICE);
 	}
 
+	/* 100000bps, even parity, two stop bits */
 	config.baud_rate    = 100000;
 	config.data_bits    = DATA_BITS_8;
-	config.stop_bits    = STOP_BITS_1;
-	config.parity       = PARITY_NONE;
+	config.stop_bits    = STOP_BITS_2;
+	config.parity       = PARITY_EVEN;
 	config.bit_order    = BIT_ORDER_LSB;
 	config.invert       = NRZ_NORMAL;
 	config.bufsz        = 128;
