@@ -219,7 +219,7 @@ int waveview_init(void)
 
 	wave_thread = rt_thread_create("wave",
 								wave_thread_entry, RT_NULL,
-								512, 20, 20);
+								1024, 20, 20);
 
 	if (wave_thread != RT_NULL)
 		rt_thread_startup(wave_thread);
