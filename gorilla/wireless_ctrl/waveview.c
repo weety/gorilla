@@ -11,10 +11,11 @@
 static rt_device_t waveview_dev;
 #define WAVE_EVT_RX      (1u << 0)
 #define WAVE_EVT_TIMEOUT (1u << 1)
+#define WAVE_EVT_TX_DONE (1u << 2)
 static struct rt_event wave_evt;
 static struct rt_timer wave_timer;
 #define WAVE_SEND_PERIOD (10) /* 10ms */
-
+#define WAVE_UART_SEND_TIMEOUT (10) /* 10ms timeout for send 10 bytes data */
 #define WAVE_BUF_SIZE 64
 
 struct wave_buffer {
@@ -79,12 +80,30 @@ void OutPut_Data(uint16_t ch1, uint16_t ch2, uint16_t ch3, uint16_t ch4)
 
 rt_err_t wave_write_data(uint8_t *buf, uint32_t size)
 {
-	return rt_device_write(waveview_dev, 0, buf, size);
+	rt_size_t count = 0;
+	rt_err_t  err = RT_EOK;
+	count = rt_device_write(waveview_dev, 0, buf, size);
+	err = rt_event_recv(&wave_evt, WAVE_EVT_TX_DONE, 
+		RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, 
+		rt_tick_from_millisecond(WAVE_UART_SEND_TIMEOUT), 
+		RT_NULL);
+	if (err != RT_EOK)
+	{
+		rt_kprintf("wave write data timeout\n");
+		return 0;
+	}
+
+	return count;
 }
 
 static void wave_timer_update(void* parameter)
 {
 	rt_event_send(&wave_evt, WAVE_EVT_TIMEOUT);
+}
+
+rt_err_t wave_tx_done(rt_device_t dev, void *buffer)
+{
+	return rt_event_send(&wave_evt, WAVE_EVT_TX_DONE);
 }
 
 rt_err_t wave_rx_ind(rt_device_t dev, rt_size_t size)
@@ -117,6 +136,7 @@ void wave_thread_entry(void* parameter)
 	} chn_data;
 
 	rt_device_set_rx_indicate(waveview_dev, wave_rx_ind);
+	rt_device_set_tx_complete(waveview_dev, wave_tx_done);
 
 	while(1)
 	{
@@ -173,6 +193,7 @@ void wave_thread_entry(void* parameter)
 	}
 
 	rt_device_set_rx_indicate(waveview_dev, RT_NULL);
+	rt_device_set_tx_complete(waveview_dev, RT_NULL);
 	rt_device_close(waveview_dev);
 	rt_event_detach(&wave_evt);
 }
