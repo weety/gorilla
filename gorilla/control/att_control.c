@@ -136,8 +136,14 @@ int moto_control(void)
 	moto_left_run(l_dir, l_speed);
 	moto_right_run(r_dir, r_speed);
 
-	param.pwm_l_out = l_speed;
-	param.pwm_r_out = r_speed;
+	if (l_dir)
+		param.pwm_l_out = -l_speed;
+	else 
+		param.pwm_l_out = l_speed;
+	if (r_dir)
+		param.pwm_r_out = -r_speed;
+	else 
+		param.pwm_r_out = r_speed;
 	mpdc_push_data(ctrl_param.mpdc, &param);
 
 	return 0;
