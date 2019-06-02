@@ -54,16 +54,16 @@ uint16_t CRC16_CHECK(uint8_t *Buf, uint8_t CRC_CNT)
 	return CRC_Temp;
 }
 
-void OutPut_Data(uint16_t ch1, uint16_t ch2, uint16_t ch3, uint16_t ch4)
+void OutPut_Data(int16_t ch1, int16_t ch2, int16_t ch3, int16_t ch4)
 {
 	uint16_t temp[4] = {0};
 	uint8_t databuf[10] = {0};
 	uint8_t i;
 	uint16_t CRC16 = 0;
-	temp[0] = ch1;
-	temp[1] = ch2;
-	temp[2] = ch3;
-	temp[3] = ch4;
+	temp[0] = (uint16_t)ch1;
+	temp[1] = (uint16_t)ch2;
+	temp[2] = (uint16_t)ch3;
+	temp[3] = (uint16_t)ch4;
 
 	for(i = 0; i < 4; i++) 
 	{
@@ -122,10 +122,10 @@ void wave_thread_entry(void* parameter)
 	uint32_t ret = 0;
 	uint32_t pAddr1 = 0, pAddr2 = 0, pAddr3 = 0, pAddr4 = 0;
 	uint16_t CRC_RX, CRC_Tmp;
-	uint16_t ch1 = 0;
-	uint16_t ch2 = 0;
-	uint16_t ch3 = 0;
-	uint16_t ch4 = 0;
+	int16_t ch1 = 0;
+	int16_t ch2 = 0;
+	int16_t ch3 = 0;
+	int16_t ch4 = 0;
 
 	union {
 		sensor_gyr_t gyr;
@@ -152,11 +152,11 @@ void wave_thread_entry(void* parameter)
 		if (evt_recved & WAVE_EVT_TIMEOUT)
 		{
 			mpdc_pull_data(att_angle.mpdc, &chn_data.angle);
-			ch1 = (uint16_t)(chn_data.angle.angle_acc * 40000);
-			ch2 = (uint16_t)(chn_data.angle.angle * 40000);
-			ch3 = (uint16_t)(chn_data.angle.speed * 40000);
+			ch1 = (int16_t)(chn_data.angle.angle_acc * 40000);
+			ch2 = (int16_t)(chn_data.angle.angle * 40000);
+			ch3 = (int16_t)(chn_data.angle.speed * 40000);
 			mpdc_pull_data(ctrl_param.mpdc, &chn_data.param);
-			ch4 = (uint16_t)(chn_data.param.pwm_l_out * 40000);
+			ch4 = (int16_t)(chn_data.param.pwm_l_out * 40000);
 			OutPut_Data(ch1, ch2, ch3, ch4);
 		}
 
