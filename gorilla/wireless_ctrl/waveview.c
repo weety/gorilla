@@ -152,11 +152,29 @@ void wave_thread_entry(void* parameter)
 		if (evt_recved & WAVE_EVT_TIMEOUT)
 		{
 			mpdc_pull_data(att_angle.mpdc, &chn_data.angle);
-			ch1 = (int16_t)(chn_data.angle.angle_acc * 40000);
-			ch2 = (int16_t)(chn_data.angle.angle * 40000);
-			ch3 = (int16_t)(chn_data.angle.speed * 40000);
-			mpdc_pull_data(ctrl_param.mpdc, &chn_data.param);
-			ch4 = (int16_t)(chn_data.param.pwm_l_out * 40000);
+			ch1 = (int16_t)(chn_data.angle.angle_acc * 10000);
+			ch2 = (int16_t)(chn_data.angle.angle * 10000);
+			ch3 = (int16_t)(chn_data.angle.speed * 10000);
+			switch(pAddr4)
+			{
+			case 0:
+				mpdc_pull_data(ctrl_param.mpdc, &chn_data.param);
+				ch4 = (int16_t)(chn_data.param.pwm_l_out * 10000);
+				break;
+			case 1:
+				mpdc_pull_data(ctrl_param.mpdc, &chn_data.param);
+				ch4 = (int16_t)(chn_data.param.pwm_r_out * 10000);
+				break;
+			case 2:
+				mpdc_pull_data(sensor_qenc.mpdc, &chn_data.qenc);
+				ch4 = (int16_t)(chn_data.qenc.speed_l * 10000);
+				break;
+			case 3:
+			default:
+				mpdc_pull_data(sensor_qenc.mpdc, &chn_data.qenc);
+				ch4 = (int16_t)(chn_data.qenc.speed_r * 10000);
+				break;
+			}
 			OutPut_Data(ch1, ch2, ch3, ch4);
 		}
 
