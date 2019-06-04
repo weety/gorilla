@@ -12,6 +12,7 @@ static rt_device_t waveview_dev;
 #define WAVE_EVT_RX      (1u << 0)
 #define WAVE_EVT_TIMEOUT (1u << 1)
 #define WAVE_EVT_TX_DONE (1u << 2)
+#define WAVE_EVT_EXIT    (1u << 3)
 static struct rt_event wave_evt;
 static struct rt_timer wave_timer;
 #define WAVE_SEND_PERIOD (10) /* 10ms */
@@ -140,7 +141,7 @@ void wave_thread_entry(void* parameter)
 
 	while(1)
 	{
-		err = rt_event_recv(&wave_evt, WAVE_EVT_RX | WAVE_EVT_TIMEOUT, 
+		err = rt_event_recv(&wave_evt, WAVE_EVT_RX | WAVE_EVT_TIMEOUT | WAVE_EVT_EXIT, 
 			RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, 
 			&evt_recved);
 		if (err != RT_EOK)
@@ -152,9 +153,9 @@ void wave_thread_entry(void* parameter)
 		if (evt_recved & WAVE_EVT_TIMEOUT)
 		{
 			mpdc_pull_data(att_angle.mpdc, &chn_data.angle);
-			ch1 = (int16_t)(chn_data.angle.angle_acc * 10000);
-			ch2 = (int16_t)(chn_data.angle.angle * 10000);
-			ch3 = (int16_t)(chn_data.angle.speed * 10000);
+			ch1 = (int16_t)(rad_to_deg(chn_data.angle.angle_acc) * 100);
+			ch2 = (int16_t)(rad_to_deg(chn_data.angle.angle) * 100);
+			ch3 = (int16_t)(rad_to_deg(chn_data.angle.speed) * 100);
 			switch(pAddr4)
 			{
 			case 0:
@@ -208,6 +209,12 @@ void wave_thread_entry(void* parameter)
 			}
 		}
 
+		if (evt_recved & WAVE_EVT_EXIT)
+		{
+			rt_timer_stop(&wave_timer);
+			break;
+		}
+
 	}
 
 	rt_device_set_rx_indicate(waveview_dev, RT_NULL);
@@ -258,7 +265,7 @@ int waveview_init(void)
 
 	wave_thread = rt_thread_create("wave",
 								wave_thread_entry, RT_NULL,
-								1024, 20, 20);
+								1024, 19, 20);
 
 	if (wave_thread != RT_NULL)
 		rt_thread_startup(wave_thread);
@@ -274,10 +281,18 @@ int waveview_init(void)
 	return 0;
 }
 
+int waveview_exit(void)
+{
+	rt_event_send(&wave_evt, WAVE_EVT_EXIT);
+
+	return 0;
+}
 
 #ifdef RT_USING_FINSH
 #include <finsh.h>
 
 MSH_CMD_EXPORT_ALIAS(waveview_init, waveview_init, wave view app init);
+MSH_CMD_EXPORT_ALIAS(waveview_exit, waveview_exit, wave view app exit);
+
 #endif
 
