@@ -16,11 +16,14 @@
 #define E_EXPANSION_FACTOR  6
 #define EC_EXPANSION_FACTOR 6
 
-#define E_MAX  (0.09 * LANGUAGE_DOMAIN_RANGE) /* max angle rad range:[-0.09,0.09]*/
-#define EC_MAX (0.5 * LANGUAGE_DOMAIN_RANGE)  /* max angular velocity rad/s range:[-0.5,0.5]*/
+#define E_MAX  (0.09) /* max angle rad range:[-0.09,0.09]*/
+#define EC_MAX (0.5)  /* max angular velocity rad/s range:[-0.5,0.5]*/
 
-#define KE  ((float)LANGUAGE_DOMAIN_RANGE/E_MAX)
-#define KEC ((float)LANGUAGE_DOMAIN_RANGE/EC_MAX)
+#define E_MAX_SCALER  (E_MAX * LANGUAGE_DOMAIN_RANGE) /* Increasing the scaling factor increases the sensitivity*/
+#define EC_MAX_SCALER (EC_MAX * LANGUAGE_DOMAIN_RANGE) /* Increasing the scaling factor increases the sensitivity*/
+
+#define KE  ((float)LANGUAGE_DOMAIN_RANGE/E_MAX_SCALER)
+#define KEC ((float)LANGUAGE_DOMAIN_RANGE/EC_MAX_SCALER)
 
 typedef struct {
 	float kp;
