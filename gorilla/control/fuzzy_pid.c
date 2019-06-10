@@ -62,8 +62,8 @@ void fuzzy_pid_angle(float e, float ec, fuzzy_pid_param *param)
 	if (ec > EC_MAX)
 		ec = EC_MAX;
 
-	es = e * KE;
-	ecs = ec * KEC;
+	es = e * E_EXPANSION_FACTOR * KE + LANGUAGE_DOMAIN_RANGE;
+	ecs = ec * EC_EXPANSION_FACTOR * KEC + LANGUAGE_DOMAIN_RANGE;
 
 	param_get_by_idx(FUZZY_PID_KP, &fuzzy_angle_kp);
 	param_get_by_idx(FUZZT_PID_KD, &fuzzy_angle_kd);
