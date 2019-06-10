@@ -12,6 +12,7 @@
 #include "attitude_estimation.h"
 #include "param.h"
 #include "att_control.h"
+#include "fuzzy_pid.h"
 #include <math.h>
 
 extern sensor_t sensor_qenc;
@@ -26,11 +27,20 @@ void angle_control(void)
 	float lost_ctrl_angle = 0.0f;
 	float angle_kp = 0.0f;
 	float angle_kd = 0.0f;
+	int32_t fuzzy_pid_en;
+	fuzzy_pid_param fuzzy_param;
 	att_angle_t  angle;
 	mpdc_pull_data(att_angle.mpdc, &angle);
+	param_get_by_idx(FUZZY_PID_EN, (float *)&fuzzy_pid_en);
 	param_get_by_idx(LOST_CTRL_ANGLE, &lost_ctrl_angle);
-	param_get_by_idx(PID_ANGLE_KP, &angle_kp);
-	param_get_by_idx(PID_ANGLE_KD, &angle_kd);
+	if (fuzzy_pid_en) {
+		fuzzy_pid_angle(angle.angle, angle.speed, &fuzzy_param);
+		angle_kp = fuzzy_param.kp;
+		angle_kd = fuzzy_param.kd;
+	} else {
+		param_get_by_idx(PID_ANGLE_KP, &angle_kp);
+		param_get_by_idx(PID_ANGLE_KD, &angle_kd);
+	}
 
 	if (fabs(angle.angle) >= deg_to_rad(lost_ctrl_angle)) {
 		att_control.lost_control_flag = true;
@@ -67,9 +77,9 @@ void speed_control(void)
 
 void speed_control_out(void)
 {
-	int speed_sample_interval;
+	int32_t speed_sample_interval;
 
-	param_get_by_idx(SPEED_SAMPLE_INTERVAL, &speed_sample_interval);
+	param_get_by_idx(SPEED_SAMPLE_INTERVAL, (float *)&speed_sample_interval);
 
 	if (att_control.speed_ctrl_period == 0) {
 		speed_control();

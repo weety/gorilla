@@ -15,6 +15,7 @@ filter/kalman.c
 filter/filter.c
 attitude/attitude_estimation.c
 control/att_control.c
+control/fuzzy_pid.c
 wireless_ctrl/waveview.c
 wireless_ctrl/rc.c
 wireless_ctrl/sbus.c

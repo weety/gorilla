@@ -41,6 +41,11 @@ typedef enum {
 	PID_SPEED_KP,
 	PID_SPEED_KI,
 
+	/* Fuzzy PID params */
+	FUZZY_PID_EN,
+	FUZZY_PID_KP,
+	FUZZT_PID_KD,
+
 	/* misc params */
 	LOST_CTRL_ANGLE,
 	MOTO_L_PWM_BD,
